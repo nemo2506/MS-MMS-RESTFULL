@@ -45,7 +45,7 @@ import com.miseservice.smsovh.model.BleDeviceState
 import com.miseservice.smsovh.model.BleRelayState
 import com.miseservice.smsovh.ui.components.ApiNetworkSection
 import com.miseservice.smsovh.ui.components.BleConfigSection
-import com.miseservice.smsovh.ui.components.MainHeader
+
 import com.miseservice.smsovh.ui.components.OvhApiConfigSection
 import com.miseservice.smsovh.ui.components.OvhSmsFormSection
 import com.miseservice.smsovh.ui.components.SendSmsSection
@@ -317,8 +317,7 @@ fun MainScreen(
             .verticalScroll(rememberScrollState())
             .padding(20.dp)
     ) {
-        MainHeader()
-        Spacer(modifier = Modifier.height(12.dp))
+
         uiState.feedbackMessage?.let { feedbackMessage ->
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -465,6 +464,11 @@ fun MainScreen(
                     batteryMinPercent = uiState.bleMinBattery,
                     batteryMaxPercent = uiState.bleMaxBattery,
                     isConnected = uiState.bleDeviceState == BleDeviceState.Connected,
+                    isLoading = uiState.bleDeviceState == BleDeviceState.Scanning
+                            || uiState.bleDeviceState is BleDeviceState.Found
+                            || uiState.bleDeviceState == BleDeviceState.Connecting,
+                    relayLoading = uiState.bleRelayLoading,
+                    wifiLoading = uiState.bleWifiLoading,
                     relayEnabled = uiState.bleRelayState == BleRelayState.On,
                     wifiEnabled = uiState.bleWifiEnabled,
                     connectionStatus = when (uiState.bleDeviceState) {

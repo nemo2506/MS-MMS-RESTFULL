@@ -1,6 +1,7 @@
 package com.miseservice.smsovh.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -8,6 +9,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -40,6 +42,9 @@ fun BleConfigSection(
     batteryMinPercent: Int = 20,
     batteryMaxPercent: Int = 80,
     isConnected: Boolean = false,
+    isLoading: Boolean = false,
+    relayLoading: Boolean = false,
+    wifiLoading: Boolean = false,
     relayEnabled: Boolean = false,
     wifiEnabled: Boolean = false,
     connectionStatus: String = "",
@@ -128,16 +133,29 @@ fun BleConfigSection(
                 fontSize = 13.sp
             )
             Spacer(Modifier.width(8.dp))
-            Switch(
-                checked = connected,
-                onCheckedChange = { isChecked -> if (isChecked) onConnect() else onDisconnect() },
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = colorResource(id = R.color.smsovh_primary),
-                    checkedTrackColor = colorResource(id = R.color.smsovh_primary).copy(alpha = 0.45f),
-                    uncheckedThumbColor = colorResource(id = R.color.smsovh_primary).copy(alpha = 0.85f),
-                    uncheckedTrackColor = colorResource(id = R.color.smsovh_primary).copy(alpha = 0.25f)
-                )
-            )
+            Box(
+                modifier = Modifier.size(52.dp, 32.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = colorResource(id = R.color.smsovh_primary),
+                        strokeWidth = 2.5.dp
+                    )
+                } else {
+                    Switch(
+                        checked = connected,
+                        onCheckedChange = { isChecked -> if (isChecked) onConnect() else onDisconnect() },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = colorResource(id = R.color.smsovh_primary),
+                            checkedTrackColor = colorResource(id = R.color.smsovh_primary).copy(alpha = 0.45f),
+                            uncheckedThumbColor = colorResource(id = R.color.smsovh_primary).copy(alpha = 0.85f),
+                            uncheckedTrackColor = colorResource(id = R.color.smsovh_primary).copy(alpha = 0.25f)
+                        )
+                    )
+                }
+            }
         }
     }
 
@@ -156,16 +174,29 @@ fun BleConfigSection(
             fontWeight = FontWeight.SemiBold,
             fontSize = 14.sp
         )
-        Switch(
-            checked = relayEnabled,
-            onCheckedChange = onRelaySwitchChange,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = colorResource(id = R.color.smsovh_primary),
-                checkedTrackColor = colorResource(id = R.color.smsovh_primary).copy(alpha = 0.45f),
-                uncheckedThumbColor = colorResource(id = R.color.smsovh_primary).copy(alpha = 0.85f),
-                uncheckedTrackColor = colorResource(id = R.color.smsovh_primary).copy(alpha = 0.25f)
-            )
-        )
+        Box(
+            modifier = Modifier.size(52.dp, 32.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            if (relayLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    color = colorResource(id = R.color.smsovh_primary),
+                    strokeWidth = 2.5.dp
+                )
+            } else {
+                Switch(
+                    checked = relayEnabled,
+                    onCheckedChange = onRelaySwitchChange,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = colorResource(id = R.color.smsovh_primary),
+                        checkedTrackColor = colorResource(id = R.color.smsovh_primary).copy(alpha = 0.45f),
+                        uncheckedThumbColor = colorResource(id = R.color.smsovh_primary).copy(alpha = 0.85f),
+                        uncheckedTrackColor = colorResource(id = R.color.smsovh_primary).copy(alpha = 0.25f)
+                    )
+                )
+            }
+        }
     }
 
     Spacer(Modifier.height(sectionSpacing))
@@ -183,16 +214,29 @@ fun BleConfigSection(
             fontWeight = FontWeight.SemiBold,
             fontSize = 14.sp
         )
-        Switch(
-            checked = wifiEnabled,
-            onCheckedChange = onWifiSwitchChange,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = colorResource(id = R.color.smsovh_primary),
-                checkedTrackColor = colorResource(id = R.color.smsovh_primary).copy(alpha = 0.45f),
-                uncheckedThumbColor = colorResource(id = R.color.smsovh_primary).copy(alpha = 0.85f),
-                uncheckedTrackColor = colorResource(id = R.color.smsovh_primary).copy(alpha = 0.25f)
-            )
-        )
+        Box(
+            modifier = Modifier.size(52.dp, 32.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            if (wifiLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    color = colorResource(id = R.color.smsovh_primary),
+                    strokeWidth = 2.5.dp
+                )
+            } else {
+                Switch(
+                    checked = wifiEnabled,
+                    onCheckedChange = onWifiSwitchChange,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = colorResource(id = R.color.smsovh_primary),
+                        checkedTrackColor = colorResource(id = R.color.smsovh_primary).copy(alpha = 0.45f),
+                        uncheckedThumbColor = colorResource(id = R.color.smsovh_primary).copy(alpha = 0.85f),
+                        uncheckedTrackColor = colorResource(id = R.color.smsovh_primary).copy(alpha = 0.25f)
+                    )
+                )
+            }
+        }
     }
 
     Spacer(Modifier.height(sectionSpacing))

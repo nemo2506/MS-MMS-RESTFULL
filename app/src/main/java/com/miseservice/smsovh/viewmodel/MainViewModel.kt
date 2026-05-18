@@ -663,19 +663,31 @@ class MainViewModel @Inject constructor(
     }
 
     fun sendBleCommand(command: BleCommand) {
+        // Activer le loader selon le type de commande
+        _uiState.value = _uiState.value.copy(
+            bleRelayLoading = command == BleCommand.RelayOn || command == BleCommand.RelayOff,
+            bleWifiLoading  = command == BleCommand.WifiOn  || command == BleCommand.WifiOff
+        )
         viewModelScope.launch {
             val result = sendBleCommandUseCase(command)
             val wifiEnabled = when (command) {
-                BleCommand.WifiOn -> true
+                BleCommand.WifiOn  -> true
                 BleCommand.WifiOff -> false
                 else -> when (result) {
                     is BleRelayState.WebServer -> true
                     else -> _uiState.value.bleWifiEnabled
                 }
             }
+            // Fix : ne pas écraser bleRelayState si la commande est Wifi
+            val newRelayState = when (command) {
+                BleCommand.WifiOn, BleCommand.WifiOff -> _uiState.value.bleRelayState
+                else -> result
+            }
             _uiState.value = _uiState.value.copy(
-                bleRelayState = result,
-                bleWifiEnabled = wifiEnabled
+                bleRelayState  = newRelayState,
+                bleWifiEnabled = wifiEnabled,
+                bleRelayLoading = false,
+                bleWifiLoading  = false
             )
         }
     }
