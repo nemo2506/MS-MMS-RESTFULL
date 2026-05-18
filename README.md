@@ -128,7 +128,6 @@ flowchart LR
 
 ## 📚 Documentation projet
 
-- Documentation code (KDoc et conventions) : `docs/DOCS_CODE.md`
 - Manuel achat / integration MOS + ESP32 + flash Arduino IDE : `docs/MANUEL_ACHAT_INTEGRATION_MOS_ESP32.md`
 - Exemples Python pour l'API REST SMS / MMS : `docs/API_PYTHON_SMS_EXAMPLES.md`
 - Historique des corrections MVVM : `CHANGELOG_MVVM_FIX.md`
@@ -176,7 +175,6 @@ MS-OVH-SMS/
 │   └── build.gradle
 ├── docs/
 │   ├── API_PYTHON_SMS_EXAMPLES.md
-│   ├── DOCS_CODE.md
 │   └── MANUEL_ACHAT_INTEGRATION_MOS_ESP32.md
 ├── screenShots/                               ← Captures d'ecran utilisees dans le README
 ├── CHANGELOG_MVVM_FIX.md                      ← Historique des corrections MVVM
@@ -406,7 +404,6 @@ Pour toute question ou contribution, ouvrez une issue ou une pull request.
 
 | Document | Emplacement | Rôle |
 |---|---|---|
-| Documentation code | `docs/DOCS_CODE.md` | Conventions KDoc, zones sensibles et principes de documentation du code |
 | Manuel MOS + ESP32 | `docs/MANUEL_ACHAT_INTEGRATION_MOS_ESP32.md` | Achat, cablage, flash Arduino IDE, BLE, relais et integration ESP32 |
 | Exemples Python API REST | `docs/API_PYTHON_SMS_EXAMPLES.md` | Guide de configuration Python pour consommer l'API REST SMS / MMS |
 | Historique MVVM | `CHANGELOG_MVVM_FIX.md` | Trace des corrections et ajustements lies a l'architecture et au ViewModel |
