@@ -129,7 +129,7 @@ flowchart LR
 ## 📚 Documentation projet
 
 - Manuel achat / integration MOS + ESP32 + flash Arduino IDE : `docs/MANUEL_ACHAT_INTEGRATION_MOS_ESP32.md`
-- Exemples Python pour l'API REST SMS / MMS : `docs/API_PYTHON_SMS_EXAMPLES.md`
+- Exemple de Client (Python/PHP/Android) pour l'API REST SMS / MMS : `docs/EXEMPLE_DE_CLIENT_API_REST.md`
 - Historique des corrections MVVM : `CHANGELOG_MVVM_FIX.md`
 
 ---
@@ -174,7 +174,7 @@ MS-OVH-SMS/
 │   │       └── LocalSmsCircuitTest.kt         ← Tests instrumentes envoi local
 │   └── build.gradle
 ├── docs/
-│   ├── API_PYTHON_SMS_EXAMPLES.md
+│   ├── EXEMPLE_DE_CLIENT_API_REST.md
 │   └── MANUEL_ACHAT_INTEGRATION_MOS_ESP32.md
 ├── screenShots/                               ← Captures d'ecran utilisees dans le README
 ├── CHANGELOG_MVVM_FIX.md                      ← Historique des corrections MVVM
@@ -338,41 +338,9 @@ Réponse dédiée `/api/battery` (`200`):
   - Il est recommandé de compresser/redimensionner l’image avant l’envoi.
   - La taille maximale acceptée peut varier selon le pays et l’opérateur, mais ne jamais dépasser 600 Ko pour une compatibilité maximale.
 
-Exemple Python :
+Exemples clients (Python, PHP, Android) :
 
-Voir la documentation dediee : `docs/API_PYTHON_SMS_EXAMPLES.md`
-
-Exemple PHP:
-
-```php
-<?php
-$bytes = file_get_contents('image.jpg');
-$base64Jpeg = base64_encode($bytes);
-
-$payload = [
-    'senderId' => 'MYBRAND',
-    'recipient' => '+33612345678',
-    'text' => 'MMS test',
-    'base64Jpeg' => $base64Jpeg,
-];
-```
-
-Exemple Android (Kotlin):
-
-```text
-import android.util.Base64
-import java.io.File
-
-val imageBytes = File("/sdcard/Download/image.jpg").readBytes()
-val base64Jpeg = Base64.encodeToString(imageBytes, Base64.NO_WRAP)
-
-val payload = mapOf(
-    "senderId" to "MYBRAND",
-    "recipient" to "+33612345678",
-    "text" to "MMS test",
-    "base64Jpeg" to base64Jpeg
-)
-```
+Voir la documentation dediee : `docs/EXEMPLE_DE_CLIENT_API_REST.md`
 
 ---
 
@@ -404,9 +372,8 @@ Pour toute question ou contribution, ouvrez une issue ou une pull request.
 
 | Document | Emplacement | Rôle |
 |---|---|---|
-| Manuel MOS + ESP32 | `docs/MANUEL_ACHAT_INTEGRATION_MOS_ESP32.md` | Achat, cablage, flash Arduino IDE, BLE, relais et integration ESP32 |
-| Exemples Python API REST | `docs/API_PYTHON_SMS_EXAMPLES.md` | Guide de configuration Python pour consommer l'API REST SMS / MMS |
-| Historique MVVM | `CHANGELOG_MVVM_FIX.md` | Trace des corrections et ajustements lies a l'architecture et au ViewModel |
+| Manuel MOS + ESP32 | [`docs/MANUEL_ACHAT_INTEGRATION_MOS_ESP32.md`](docs/MANUEL_ACHAT_INTEGRATION_MOS_ESP32.md) | Achat, cablage, flash Arduino IDE, BLE, relais et integration ESP32 |
+| Exemple de Client | [`docs/EXEMPLE_DE_CLIENT_API_REST.md`](docs/EXEMPLE_DE_CLIENT_API_REST.md) | Exemples clients Python, PHP et Android pour consommer l'API REST SMS / MMS |
 
 ---
 

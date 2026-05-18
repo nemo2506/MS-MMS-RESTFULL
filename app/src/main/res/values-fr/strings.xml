@@ -16,20 +16,20 @@
     <string name="cancel">Annuler</string>
     <string name="send_sms">Envoyer le SMS</string>
     <string name="sender_id_hint">Sender ID (ex: MISESERVICE)</string>
-    <string name="login_hint">Login OVH (ex: sms–ab12345–1)</string>
-    <string name="password_hint">Mot de passe OVH SMS</string>
+    <string name="login_hint">Login (ex: sms–ab12345–1)</string>
+    <string name="password_hint">Mot de passe SMS</string>
     <string name="recipient_hint">Numéro destinataire (+336XXXXXXXX)</string>
     <string name="message_hint">Votre message</string>
-    <string name="config_ovh">CONFIGURATION OVH</string>
+    <string name="config_ovh">CONFIGURATION</string>
     <string name="recipient_and_message">DESTINATAIRE ET MESSAGE</string>
     <string name="char_count">%1$d / 160  •  %2$d SMS</string>
     <string name="header_sms">SMS</string>
-    <string name="header_ovh">OVH · Sender ID Alphanumérique</string>
+    <string name="header_ovh">Sender ID Alphanumérique</string>
     <string name="info_sender_id">Le Sender ID alphanumérique est limité à 11 caractères (lettres et chiffres). Le destinataire ne peut pas répondre au SMS.</string>
     <string name="missing_number_or_message">Numéro ou message manquant.</string>
     <string name="sms_sent_success">✅ SMS envoyé avec succès.</string>
     <string name="sender_id_not_allowed">Sender ID non autorisé</string>
-    <string name="app_name">OVH SMS</string>
+    <string name="app_name">MS-MMS</string>
     <string name="sim_absente_ou_invalide">"Aucune carte SIM détectée ou SIM non prête. Impossible d'envoyer le SMS."</string>
     <string name="token_copied">✅ Token copié</string>
     <string name="api_network_info_title">INFORMATIONS API &amp; RÉSEAU</string>
@@ -93,8 +93,8 @@
     <string name="service_stopping">Arrêt du service…</string>
     <string name="service_started_success">✅ Service démarré</string>
     <string name="service_stopped_success">✅ Service arrêté</string>
-    <string name="foreground_service_channel_name">Service OVH SMS</string>
-    <string name="foreground_service_title">Service actif OVH SMS</string>
+    <string name="foreground_service_channel_name">Service MS-MMS</string>
+    <string name="foreground_service_title">Service actif MS-MMS</string>
     <string name="foreground_service_message">Protection contre la mise en veille</string>
     <string name="location_permission_required_title">Permission de localisation requise</string>
     <string name="location_permission_required_message">"L'application a besoin de la localisation pour afficher les informations réseau. Veuillez l'accorder."</string>
@@ -143,19 +143,19 @@
     <string name="tab_ovh">OVH</string>
     <string name="tab_api">API</string>
     <string name="tab_bluetooth_power_switch">Power</string>
-    <string name="send_via_ovh_api">Envoyer via OVH API</string>
-    <string name="ovh_sms_sent_success">✅ SMS OVH envoyé avec succès.</string>
-    <string name="ovh_invalid_recipient">Numéro destinataire OVH invalide.</string>
+    <string name="send_via_ovh_api">Envoyer via API</string>
+    <string name="ovh_sms_sent_success">✅ SMS envoyé avec succès.</string>
+    <string name="ovh_invalid_recipient">Numéro destinataire invalide.</string>
 
-    <string name="ovh_credentials_title">Identifiants OVH</string>
+    <string name="ovh_credentials_title">Identifiants</string>
     <string name="ovh_app_key_label">Application Key</string>
     <string name="ovh_app_secret_label">Application Secret</string>
     <string name="ovh_consumer_key_label">Consumer Key</string>
-    <string name="ovh_service_name_label">Service SMS (compte OVH)</string>
-    <string name="ovh_endpoint_label">Endpoint OVH</string>
+    <string name="ovh_service_name_label">Service SMS</string>
+    <string name="ovh_endpoint_label">Endpoint</string>
     <string name="ovh_endpoint_supporting">ovh-eu, ovh-ca, ovh-us</string>
     <string name="ovh_country_prefix_label">Préfixe pays (recipient)</string>
-    <string name="ovh_credentials_help_text">Cles OVH: api.ovh.com/createToken - droit POST sms jobs</string>
+    <string name="ovh_credentials_help_text">Clés : api.ovh.com/createToken - droit POST sms jobs</string>
 
     <string name="bluetooth_section_title">Power Switch Bluetooth</string>
     <string name="bluetooth_status_connected">Connecté</string>
@@ -163,8 +163,9 @@
     <string name="bluetooth_status_connecting">Connexion en cours…</string>
     <string name="bluetooth_action_connect">Connect</string>
     <string name="bluetooth_action_disconnect">Disconnect</string>
-    <string name="bluetooth_relay_label">Relais</string>
-    <string name="bluetooth_wifi_label">WIFI</string>
+    <string name="bluetooth_relay_label">⚡ Relais</string>
+
+    <string name="bluetooth_wifi_label">📶 Wifi</string>
     <string name="bluetooth_battery_min_label">Min</string>
     <string name="bluetooth_battery_max_label">Max</string>
     <string name="bluetooth_error_invalid_pin">❌ PIN Bluetooth incorrect.</string>

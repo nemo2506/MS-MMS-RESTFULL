@@ -1,7 +1,12 @@
-# Exemples Python - API REST locale SMS / MMS
+# Exemple de Client - API REST locale SMS / MMS
 
 ## 1) Objectif
-Ce document decrit la configuration minimale pour piloter l'API REST locale de l'application Android depuis Python.
+Ce document decrit des exemples clients pour piloter l'API REST locale de l'application Android.
+
+Langages couverts :
+- Python
+- PHP
+- Android (Kotlin)
 
 Usages cibles :
 - envoi SMS
@@ -13,8 +18,9 @@ Usages cibles :
 
 ## 2) Prerequis
 
-- Python 3.10+ recommande
-- bibliotheque `requests`
+- Python 3.10+ et `requests` (optionnel selon client)
+- PHP 8+ avec extension cURL (optionnel selon client)
+- Android Kotlin avec client HTTP (optionnel selon client)
 - telephone Android et machine cliente sur le meme reseau local
 - foreground service actif dans l'application Android
 - token API disponible depuis l'interface de l'application
@@ -27,9 +33,9 @@ py -m pip install requests
 
 ---
 
-## 3) Configuration minimale
+## 3) Configuration minimale (commune)
 
-Un script Python doit en pratique definir :
+Tout client doit en pratique definir :
 
 - `BASE_URL` : URL locale du telephone, par exemple `http://192.168.1.50:8080`
 - `API_TOKEN` : Bearer token affiche dans l'application
@@ -45,11 +51,11 @@ Exemple de valeurs a renseigner :
 
 ---
 
-## 4) Envoi d'un SMS
+## 4) Envoi d'un SMS (principe)
 
-Pour envoyer un SMS depuis Python :
+Pour envoyer un SMS depuis n'importe quel client :
 
-1. importer la bibliotheque `requests`
+1. utiliser un client HTTP
 2. construire l'URL `BASE_URL + /api/send-sms`
 3. envoyer un `POST` JSON avec :
    - `recipient`
@@ -141,9 +147,9 @@ Reponse type :
 
 ---
 
-## 9) Structure conseillee d'un client Python
+## 9) Structure conseillee d'un client
 
-La structure conseillee d'un script ou client Python est la suivante :
+La structure conseillee d'un script ou client est la suivante :
 
 - initialiser `BASE_URL`
 - initialiser `API_TOKEN`
@@ -154,14 +160,121 @@ La structure conseillee d'un script ou client Python est la suivante :
 
 Bonnes pratiques :
 
-- utiliser `requests.post(..., json=payload, timeout=30)`
-- utiliser `requests.get(..., timeout=15)`
+- utiliser un timeout explicite sur chaque requete
 - journaliser le `status_code` et le corps de reponse
 - gerer les erreurs reseau avec `try/except`
 
 ---
 
-## 10) Reponses attendues
+## 10) Exemples clients complets
+
+### 10.1 Python (`requests`)
+
+```python
+import requests
+
+BASE_URL = "http://<IP_DU_TELEPHONE>:<PORT>"
+TOKEN = "<TOKEN_API>"
+
+headers = {
+    "Authorization": f"Bearer {TOKEN}",
+    "Content-Type": "application/json"
+}
+
+payload = {
+    "senderId": "MYBRAND",
+    "recipient": "+33612345678",
+    "text": "Test SMS Python"
+}
+
+response = requests.post(f"{BASE_URL}/api/send-sms", json=payload, headers=headers, timeout=30)
+print(response.status_code)
+print(response.text)
+```
+
+### 10.2 PHP (`cURL`)
+
+```php
+<?php
+$baseUrl = "http://<IP_DU_TELEPHONE>:<PORT>";
+$token = "<TOKEN_API>";
+
+$payload = [
+    "senderId" => "MYBRAND",
+    "recipient" => "+33612345678",
+    "text" => "Test SMS PHP"
+];
+
+$ch = curl_init($baseUrl . "/api/send-sms");
+curl_setopt_array($ch, [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_POST => true,
+    CURLOPT_HTTPHEADER => [
+        "Content-Type: application/json",
+        "Authorization: Bearer " . $token
+    ],
+    CURLOPT_POSTFIELDS => json_encode($payload, JSON_UNESCAPED_UNICODE),
+    CURLOPT_TIMEOUT => 30,
+]);
+
+$body = curl_exec($ch);
+$status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+curl_close($ch);
+
+echo $status . PHP_EOL;
+echo $body . PHP_EOL;
+```
+
+### 10.3 Android (Kotlin + OkHttp)
+
+```kotlin
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+
+val baseUrl = "http://<IP_DU_TELEPHONE>:<PORT>"
+val token = "<TOKEN_API>"
+
+val json = """
+    {
+      "senderId": "MYBRAND",
+      "recipient": "+33612345678",
+      "text": "Test SMS Android"
+    }
+""".trimIndent()
+
+val client = OkHttpClient()
+val request = Request.Builder()
+    .url("$baseUrl/api/send-sms")
+    .addHeader("Authorization", "Bearer $token")
+    .post(json.toRequestBody("application/json".toMediaType()))
+    .build()
+
+client.newCall(request).execute().use { response ->
+    println(response.code)
+    println(response.body?.string().orEmpty())
+}
+```
+
+### 10.4 MMS (base64) - exemple multi-clients
+
+Champ obligatoire : `base64Jpeg`.
+
+```json
+{
+  "senderId": "MYBRAND",
+  "recipient": "+33612345678",
+  "text": "MMS test",
+  "base64Jpeg": "<BASE64_JPEG>"
+}
+```
+
+Route conseillee : `POST /api/send-message`.
+
+---
+
+## 11) Reponses attendues
 
 Succes possible :
 
@@ -187,7 +300,7 @@ Erreur possible :
 
 ---
 
-## 11) Conseils de securite
+## 12) Conseils de securite
 
 - ne jamais publier le vrai Bearer token dans un depot Git
 - eviter d'ecrire le token en dur dans les scripts partages
@@ -203,7 +316,7 @@ py .\script_sms.py
 
 ---
 
-## 12) Checklist de validation
+## 13) Checklist de validation
 
 Avant de depanner un script Python, verifier que :
 
