@@ -32,10 +32,10 @@
     <string name="sms_not_delivered">SMS non livré ❌</string>
     <string name="sim_absente_ou_invalide">"Aucune carte SIM détectée ou SIM non prête. Impossible d'envoyer le SMS."</string>
     <string name="token_copied">✅ Token copié</string>
-    <string name="api_network_info_title">INFORMATIONS API &amp; RÉSEAU</string>
+    <string name="api_network_info_title">CONNEXION</string>
     <string name="network_not_connected">Non connectée</string>
     <string name="connected_ip_label">IP connectée</string>
-    <string name="api_endpoints_title">ENDPOINTS API</string>
+    <string name="api_endpoints_title">ENDPOINTS</string>
     <string name="api_token_section_title">SÉCURITÉ</string>
     <!-- Dialogue état système -->
     <string name="system_status_dialog_title">ÉTAT DU SYSTÈME</string>
@@ -108,7 +108,7 @@
     <string name="location_permission_required_title">Permission de localisation requise</string>
     <string name="location_permission_required_message">"L'application a besoin de la localisation pour afficher les informations réseau. Veuillez l'accorder."</string>
     <string name="location_permission_denied_message">"La permission de localisation est refusée. Vous pouvez l'activer depuis les paramètres."</string>
-    <string name="api_token_label">Token API</string>
+    <string name="api_token_label">Token</string>
     <string name="location_label">Localisation</string>
     <string name="network_label">Réseau</string>
     <string name="network_connected">Connecté</string>
@@ -177,7 +177,7 @@
     <string name="bluetooth_action_disconnect">DISCONNECT</string>
     <string name="bluetooth_relay_label">⚡ Charge</string>
 
-    <string name="bluetooth_wifi_label">📶 WIFI</string>
+    <string name="bluetooth_wifi_label">Serveur HTTP</string>
     <string name="bluetooth_battery_charge_title">🔋 BATTERIE</string>
     <string name="bluetooth_battery_min_label">Min</string>
     <string name="bluetooth_battery_max_label">Max</string>

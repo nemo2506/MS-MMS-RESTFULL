@@ -14,6 +14,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bluetooth
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -212,12 +213,21 @@ fun BleConfigSection(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(
-            text = stringResource(R.string.bluetooth_wifi_label),
-            color = colorResource(id = R.color.white),
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 14.sp
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = Icons.Default.Language,
+                contentDescription = null,
+                tint = colorResource(id = R.color.white),
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = stringResource(R.string.bluetooth_wifi_label),
+                color = colorResource(id = R.color.white),
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 14.sp
+            )
+        }
         Box(
             modifier = Modifier.size(52.dp, 32.dp),
             contentAlignment = Alignment.Center

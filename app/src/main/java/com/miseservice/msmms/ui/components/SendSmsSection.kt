@@ -9,7 +9,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
@@ -76,6 +80,11 @@ fun SendSmsSection(
         interactionSource = interactionSource,
         shape = RoundedCornerShape(0.dp)
     ) {
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.Send,
+            contentDescription = null
+        )
+        Spacer(Modifier.width(8.dp))
         Text(stringResource(R.string.send_sms), fontSize = 15.sp)
     }
     Spacer(Modifier.height(12.dp))

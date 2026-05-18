@@ -178,7 +178,7 @@
     <string name="bluetooth_action_disconnect">DISCONNECT</string>
     <string name="bluetooth_relay_label">⚡ Charge</string>
 
-    <string name="bluetooth_wifi_label">📶 WIFI</string>
+    <string name="bluetooth_wifi_label">Serveur HTTP</string>
     <string name="bluetooth_battery_charge_title">CHARGE</string>
     <string name="bluetooth_battery_min_label">Min</string>
     <string name="bluetooth_battery_max_label">Max</string>
