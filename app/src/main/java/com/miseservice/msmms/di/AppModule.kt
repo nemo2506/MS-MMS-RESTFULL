@@ -9,6 +9,9 @@ import com.miseservice.msmms.domain.usecase.GetLoginUseCase
 import com.miseservice.msmms.domain.usecase.GetPasswordUseCase
 import com.miseservice.msmms.domain.usecase.SaveCredentialsUseCase
 import com.miseservice.msmms.util.RestServerEventManager
+import com.miseservice.msmms.util.ClipboardProvider
+import com.miseservice.msmms.util.LocationDataProvider
+import com.miseservice.msmms.util.SimNetworkStatusProvider
 import com.miseservice.msmms.service.AndroidServiceControlManager
 import com.miseservice.msmms.service.ServiceControlManager
 import com.miseservice.msmms.service.SmsRestServer
@@ -53,5 +56,19 @@ object AppModule {
         @ApplicationContext context: Context,
         smsRestServer: SmsRestServer
     ): ServiceControlManager = AndroidServiceControlManager(context, smsRestServer)
-}
 
+    @Provides
+    @Singleton
+    fun provideClipboardProvider(@ApplicationContext context: Context): ClipboardProvider =
+        ClipboardProvider(context)
+
+    @Provides
+    @Singleton
+    fun provideLocationDataProvider(@ApplicationContext context: Context): LocationDataProvider =
+        LocationDataProvider(context)
+
+    @Provides
+    @Singleton
+    fun provideSimNetworkStatusProvider(@ApplicationContext context: Context): SimNetworkStatusProvider =
+        SimNetworkStatusProvider(context)
+}

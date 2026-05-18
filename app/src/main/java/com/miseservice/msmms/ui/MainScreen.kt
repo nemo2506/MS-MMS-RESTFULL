@@ -1,16 +1,10 @@
 package com.miseservice.msmms.ui
 
 import android.Manifest
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.Context
 import android.content.pm.PackageManager
-import android.location.Location
-import android.location.LocationManager
 import android.os.Build
-import android.telephony.TelephonyManager
 import android.util.Log
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -47,7 +41,6 @@ import com.miseservice.msmms.model.BleDeviceState
 import com.miseservice.msmms.model.BleRelayState
 import com.miseservice.msmms.ui.components.ApiNetworkSection
 import com.miseservice.msmms.ui.components.BleConfigSection
-
 import com.miseservice.msmms.ui.components.OvhApiConfigSection
 import com.miseservice.msmms.ui.components.OvhSmsFormSection
 import com.miseservice.msmms.ui.components.SendSmsSection
@@ -112,32 +105,9 @@ fun MainScreen(
     var pendingStartupBluetooth by rememberSaveable { mutableStateOf(false) }
     val startupApprovedPermissions = remember { mutableStateListOf<String>() }
 
-    val copyToClipboard: (String, String) -> Unit = remember {
-        { label, value ->
-            Log.d("CLIPBOARD", "MainScreen START")
-            val ctx = currentContext.value
-            val clipboard = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-            clipboard.setPrimaryClip(ClipData.newPlainText(label, value))
-
-            Log.d("CLIPBOARD", "MainScreen: $label, $value")
-            if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU) {
-                val messageRes = when (label) {
-                    "send-endpoint" -> R.string.endpoint_send_copied
-                    "logs-endpoint" -> R.string.endpoint_logs_copied
-                    "battery-endpoint" -> R.string.endpoint_battery_copied
-                    "connected-ip" -> R.string.connected_ip_copied
-                    "token" -> R.string.token_copied
-                    "location" -> R.string.location_copied
-                    "network" -> R.string.network_copied
-                    else -> R.string.endpoint_copied
-                }
-                Toast.makeText(
-                    ctx,
-                    withStatusPrefix(ctx.getString(messageRes), FeedbackType.SUCCESS),
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
-        }
+    // Externaliser la copie via le ViewModel (MVVM-compliant)
+    val copyToClipboard: (String, String) -> Unit = { label, value ->
+        viewModel.copyToClipboard(label, value)
     }
 
     // Champs du formulaire SMS pilotés par le ViewModel
@@ -539,33 +509,11 @@ fun MainScreen(
         }
     }
 
-    // Récupération de la localisation réseau
+    // Récupération de la localisation réseau (externaliser via ViewModel)
     val locationData = uiState.locationData
     LaunchedEffect(locationPermissionGranted) {
         if (locationPermissionGranted) {
-            val locationManager =
-                context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
-            val providers = locationManager.getProviders(true)
-            var bestLocation: Location? = null
-            for (provider in providers) {
-                val l = try {
-                    if (ActivityCompat.checkSelfPermission(
-                            context,
-                            Manifest.permission.ACCESS_FINE_LOCATION
-                        ) == PackageManager.PERMISSION_GRANTED
-                    ) {
-                        locationManager.getLastKnownLocation(provider)
-                    } else null
-                } catch (_: Exception) {
-                    null
-                }
-                if (l != null && (bestLocation == null || l.accuracy < bestLocation.accuracy)) {
-                    bestLocation = l
-                }
-            }
-            bestLocation?.let {
-                viewModel.setLocationData(Pair(it.latitude, it.longitude))
-            }
+            viewModel.fetchCurrentLocation()
         }
     }
 
@@ -573,15 +521,9 @@ fun MainScreen(
     val token by viewModel.token.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Surveillance SIM toutes les 5 secondes
-    LaunchedEffect(Unit) {
-        while (true) {
-            val tm = context.getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
-            val simReady = tm?.simState == TelephonyManager.SIM_STATE_READY
-            viewModel.updateSimNetworkStatus(simReady)
-            delay(5000L)
-        }
-    }
+    // La surveillance SIM est gérée automatiquement par le ViewModel
+    // Plus besoin de boucle dans la UI ✓ (MVVM-compliant)
+
 
     // Dialogue état système persistant (4 conditions)
     val bleConnected = uiState.bleDeviceState == com.miseservice.msmms.model.BleDeviceState.Connected
