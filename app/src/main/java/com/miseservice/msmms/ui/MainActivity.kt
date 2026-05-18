@@ -1,6 +1,10 @@
 package com.miseservice.msmms.ui
 
 import android.content.Intent
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.IntentFilter
+import android.bluetooth.BluetoothAdapter
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.result.ActivityResultLauncher
@@ -26,6 +30,15 @@ class MainActivity : AppCompatActivity() {
     private lateinit var requestSendSmsPermission: ActivityResultLauncher<String>
     private lateinit var requestIgnoreBatteryOptimization: ActivityResultLauncher<Intent>
     private var pendingSendSmsAfterPermission: Boolean = false
+    private val bluetoothStateReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action != BluetoothAdapter.ACTION_STATE_CHANGED) return
+            val state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR)
+            if (state == BluetoothAdapter.STATE_TURNING_OFF || state == BluetoothAdapter.STATE_OFF) {
+                viewModel.disconnectBleSilently()
+            }
+        }
+    }
 
     // Ouvre la page des paramètres de l'application pour accorder la permission manuellement
     private fun openAppSettings() {
@@ -107,10 +120,22 @@ class MainActivity : AppCompatActivity() {
         }
 
         maybeRequestBatteryOptimizationExemption()
+
+        registerReceiver(
+            bluetoothStateReceiver,
+            IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED)
+        )
     }
 
     override fun onStop() {
+        viewModel.disconnectBleSilently()
         super.onStop()
         viewModel.saveAllSettings()
+    }
+
+    override fun onDestroy() {
+        runCatching { unregisterReceiver(bluetoothStateReceiver) }
+        viewModel.disconnectBleSilently()
+        super.onDestroy()
     }
 }

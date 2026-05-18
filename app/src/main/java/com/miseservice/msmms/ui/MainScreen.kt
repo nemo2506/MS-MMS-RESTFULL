@@ -491,7 +491,7 @@ fun MainScreen(
                             fontSize = 17.sp
                         )
                         Spacer(Modifier.height(16.dp))
-                        OutlinedTextField(
+                        TextField(
                             value = blePinInput,
                             onValueChange = { blePinInput = it.filter(Char::isDigit).take(8) },
                             singleLine = true,
@@ -585,21 +585,29 @@ fun MainScreen(
 
     // Dialogue état système persistant (4 conditions)
     val bleConnected = uiState.bleDeviceState == com.miseservice.msmms.model.BleDeviceState.Connected
-    val allHealthy = uiState.serviceActive && uiState.isIpValid && bleConnected && uiState.simNetworkAvailable
-    var systemStatusDismissed by rememberSaveable { mutableStateOf(false) }
+    val hasSystemIssue = !(uiState.serviceActive && uiState.isIpValid && bleConnected && uiState.simNetworkAvailable)
+    val systemIssueSignature = remember(
+        uiState.serviceActive,
+        uiState.isIpValid,
+        bleConnected,
+        uiState.simNetworkAvailable
+    ) {
+        "svc:${uiState.serviceActive}|net:${uiState.isIpValid}|ble:$bleConnected|sim:${uiState.simNetworkAvailable}"
+    }
+    var dismissedSystemIssueSignature by rememberSaveable { mutableStateOf<String?>(null) }
 
-    // Réaffiche le dialogue si une nouvelle condition d'erreur apparaît après fermeture
-    LaunchedEffect(allHealthy) {
-        if (!allHealthy) systemStatusDismissed = false
+    // Quand tout est revenu OK, on réinitialise l'accusé de réception.
+    LaunchedEffect(hasSystemIssue) {
+        if (!hasSystemIssue) dismissedSystemIssueSignature = null
     }
 
-    if (!allHealthy && !systemStatusDismissed) {
+    if (hasSystemIssue && dismissedSystemIssueSignature != systemIssueSignature) {
         SystemStatusDialog(
             serviceActive = uiState.serviceActive,
             networkConnected = uiState.isIpValid,
             bluetoothConnected = bleConnected,
             simNetworkAvailable = uiState.simNetworkAvailable,
-            onDismiss = { systemStatusDismissed = true }
+            onDismiss = { dismissedSystemIssueSignature = systemIssueSignature }
         )
     }
 
@@ -609,35 +617,30 @@ fun MainScreen(
         viewModel.consumeSwitchCommandStatusMessage()
     }
 
-    Scaffold(
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Text(
-                        text = stringResource(R.string.app_name),
-                        style = MaterialTheme.typography.titleLarge,
-                        color = colorResource(id = R.color.smsovh_primary),
-                        fontWeight = FontWeight.Bold
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            topBar = {
+                CenterAlignedTopAppBar(
+                    title = {
+                        Text(
+                            text = stringResource(R.string.app_name),
+                            style = MaterialTheme.typography.titleLarge,
+                            color = colorResource(id = R.color.smsovh_primary),
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surface
                     )
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
                 )
-            )
-        },
-        snackbarHost = {
-            SnackbarHost(
-                hostState = snackbarHostState,
-                modifier = Modifier.padding(16.dp)
-            )
-        },
-        containerColor = MaterialTheme.colorScheme.background
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
+            },
+            containerColor = MaterialTheme.colorScheme.background
+        ) { paddingValues ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
             // Bandeau de retour (succès / erreur)
             uiState.feedbackMessage?.let { feedbackMessage ->
                 Card(
@@ -879,9 +882,7 @@ fun MainScreen(
                                 wifiLoading = uiState.bleWifiLoading,
                                 relayEnabled = uiState.bleRelayState == BleRelayState.On,
                                 wifiEnabled = uiState.bleWifiEnabled,
-                                connectionStatus = when {
-                                    uiState.bleRestoringConnection -> stringResource(R.string.ble_status_restoring)
-                                    else -> when (uiState.bleDeviceState) {
+                                connectionStatus = when (uiState.bleDeviceState) {
                                     BleDeviceState.Idle -> stringResource(R.string.ble_status_idle)
                                     BleDeviceState.Scanning -> stringResource(R.string.ble_status_scanning)
                                     is BleDeviceState.Found -> stringResource(R.string.ble_status_found, uiState.bleDeviceState.name)
@@ -894,7 +895,6 @@ fun MainScreen(
                                     BleDeviceState.CharacteristicNotFound -> stringResource(R.string.ble_status_characteristic_not_found)
                                     is BleDeviceState.Error -> stringResource(R.string.ble_status_error, uiState.bleDeviceState.message)
                                     BleDeviceState.Disconnected -> stringResource(R.string.ble_status_disconnected)
-                                    }
                                 },
                                 errorMessage = uiState.bleErrorMessage,
                                 onBatteryMinChange = { viewModel.setBleBatteryMin(it) },
@@ -918,7 +918,16 @@ fun MainScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                 }
             }
+            }
         }
+
+        // Snackbar fixé en haut pour les commandes Bluetooth, indépendant des dialogues.
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 84.dp, start = 16.dp, end = 16.dp)
+        )
     }
 }
 

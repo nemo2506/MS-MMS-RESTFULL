@@ -2,7 +2,7 @@ package com.miseservice.msmms.ui.components
 
 import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TextFieldColors
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
@@ -11,15 +11,18 @@ import com.miseservice.msmms.R
 
 @Composable
 fun smsOvhTextFieldColors(): TextFieldColors {
-    return OutlinedTextFieldDefaults.colors(
+    return TextFieldDefaults.colors(
         focusedTextColor = Color.White,
         unfocusedTextColor = Color.White,
         focusedLabelColor = Color.White,
         unfocusedLabelColor = Color.White,
         focusedSupportingTextColor = Color.White,
         unfocusedSupportingTextColor = Color.White,
-        focusedBorderColor = colorResource(id = R.color.smsovh_primary),
-        unfocusedBorderColor = Color.White.copy(alpha = 0.75f),
+        focusedIndicatorColor = colorResource(id = R.color.smsovh_primary),
+        unfocusedIndicatorColor = Color.White.copy(alpha = 0.75f),
+        focusedContainerColor = Color.Transparent,
+        unfocusedContainerColor = Color.Transparent,
+        disabledContainerColor = Color.Transparent,
         cursorColor = colorResource(id = R.color.smsovh_primary)
     )
 }

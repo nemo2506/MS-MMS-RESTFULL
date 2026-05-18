@@ -57,13 +57,12 @@
         <!-- Service Name (Sender ID) -->
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/tilServiceName"
-            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:hint="@string/sender_id_hint"
+            app:boxBackgroundMode="none"
             app:boxStrokeColor="@color/smsovh_primary"
             app:hintTextColor="@color/smsovh_on_dark"
-            app:boxBackgroundColor="@color/card_bg"
             android:layout_marginBottom="14dp">
 
             <com.google.android.material.textfield.TextInputEditText
@@ -79,13 +78,12 @@
         <!-- Login OVH -->
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/tilLogin"
-            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:hint="@string/login_hint"
+            app:boxBackgroundMode="none"
             app:boxStrokeColor="@color/smsovh_primary"
             app:hintTextColor="@color/smsovh_on_dark"
-            app:boxBackgroundColor="@color/card_bg"
             android:layout_marginBottom="14dp">
 
             <com.google.android.material.textfield.TextInputEditText
@@ -100,13 +98,12 @@
         <!-- Password OVH -->
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/tilPassword"
-            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:hint="@string/password_hint"
+            app:boxBackgroundMode="none"
             app:boxStrokeColor="@color/smsovh_primary"
             app:hintTextColor="@color/smsovh_on_dark"
-            app:boxBackgroundColor="@color/card_bg"
             app:endIconMode="password_toggle"
             android:layout_marginBottom="24dp">
 
@@ -140,13 +137,12 @@
         <!-- Recipient -->
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/tilRecipient"
-            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:hint="@string/recipient_hint"
+            app:boxBackgroundMode="none"
             app:boxStrokeColor="@color/smsovh_primary"
             app:hintTextColor="@color/smsovh_on_dark"
-            app:boxBackgroundColor="@color/card_bg"
             android:layout_marginBottom="14dp">
 
             <com.google.android.material.textfield.TextInputEditText
@@ -161,13 +157,12 @@
         <!-- Message -->
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/tilMessage"
-            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:hint="@string/message_hint"
+            app:boxBackgroundMode="none"
             app:boxStrokeColor="@color/smsovh_primary"
             app:hintTextColor="@color/smsovh_on_dark"
-            app:boxBackgroundColor="@color/card_bg"
             android:layout_marginBottom="6dp">
 
             <com.google.android.material.textfield.TextInputEditText

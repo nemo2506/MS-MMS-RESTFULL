@@ -53,7 +53,6 @@ data class MainUiState(
     val bleWifiEnabled: Boolean = false,
     val bleDeviceAddress: String = "",
     val blePin: String = "",
-    val bleRestoringConnection: Boolean = false,
     val bleErrorMessage: String? = null,
     val bleRelayLoading: Boolean = false,
     val bleWifiLoading: Boolean = false,

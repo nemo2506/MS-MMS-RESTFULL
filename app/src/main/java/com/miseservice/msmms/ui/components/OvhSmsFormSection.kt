@@ -3,8 +3,8 @@ package com.miseservice.msmms.ui.components
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.colorResource
@@ -34,7 +34,7 @@ fun OvhSmsFormSection(
         fontWeight = FontWeight.Bold
     )
     Spacer(Modifier.height(12.dp))
-    OutlinedTextField(
+    TextField(
         value = senderId,
         onValueChange = onSenderIdChange,
         label = { Text(stringResource(R.string.sender_id_hint), fontSize = formLabelSize) },
@@ -43,7 +43,7 @@ fun OvhSmsFormSection(
         colors = smsOvhTextFieldColors()
     )
     Spacer(Modifier.height(14.dp))
-    OutlinedTextField(
+    TextField(
         value = recipient,
         onValueChange = onRecipientChange,
         label = { Text(stringResource(R.string.recipient_hint), fontSize = formLabelSize) },
@@ -53,7 +53,7 @@ fun OvhSmsFormSection(
         colors = smsOvhTextFieldColors()
     )
     Spacer(Modifier.height(14.dp))
-    OutlinedTextField(
+    TextField(
         value = message,
         onValueChange = onMessageChange,
         label = { Text(stringResource(R.string.message_hint), fontSize = formLabelSize) },

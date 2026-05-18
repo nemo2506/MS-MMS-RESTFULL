@@ -4,8 +4,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.colorResource
@@ -39,7 +39,7 @@ fun OvhApiConfigSection(
     )
     Spacer(Modifier.height(12.dp))
 
-    OutlinedTextField(
+    TextField(
         value = ovhAppKey,
         onValueChange = onOvhAppKeyChange,
         label = { Text(stringResource(R.string.ovh_app_key_label)) },
@@ -49,7 +49,7 @@ fun OvhApiConfigSection(
     )
     Spacer(Modifier.height(10.dp))
 
-    OutlinedTextField(
+    TextField(
         value = ovhAppSecret,
         onValueChange = onOvhAppSecretChange,
         label = { Text(stringResource(R.string.ovh_app_secret_label)) },
@@ -60,7 +60,7 @@ fun OvhApiConfigSection(
     )
     Spacer(Modifier.height(10.dp))
 
-    OutlinedTextField(
+    TextField(
         value = ovhConsumerKey,
         onValueChange = onOvhConsumerKeyChange,
         label = { Text(stringResource(R.string.ovh_consumer_key_label)) },
@@ -71,7 +71,7 @@ fun OvhApiConfigSection(
     )
     Spacer(Modifier.height(10.dp))
 
-    OutlinedTextField(
+    TextField(
         value = ovhServiceName,
         onValueChange = onOvhServiceNameChange,
         label = { Text(stringResource(R.string.ovh_service_name_label)) },
@@ -81,7 +81,7 @@ fun OvhApiConfigSection(
     )
     Spacer(Modifier.height(10.dp))
 
-    OutlinedTextField(
+    TextField(
         value = ovhEndpoint,
         onValueChange = onOvhEndpointChange,
         label = { Text(stringResource(R.string.ovh_endpoint_label)) },
@@ -92,7 +92,7 @@ fun OvhApiConfigSection(
     )
     Spacer(Modifier.height(10.dp))
 
-    OutlinedTextField(
+    TextField(
         value = ovhCountryPrefix,
         onValueChange = onOvhCountryPrefixChange,
         label = { Text(stringResource(R.string.ovh_country_prefix_label)) },

@@ -205,7 +205,6 @@
     <string name="ble_status_found">Found: %1$s</string>
     <string name="ble_status_not_found">Not found</string>
     <string name="ble_status_connecting">Connecting…</string>
-    <string name="ble_status_restoring">Restoring connection…</string>
     <string name="ble_status_connected">Connected</string>
     <string name="ble_status_invalid_pin">Invalid PIN</string>
     <string name="ble_status_timeout">Connection timeout</string>

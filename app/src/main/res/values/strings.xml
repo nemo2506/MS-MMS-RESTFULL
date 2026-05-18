@@ -204,7 +204,6 @@
     <string name="ble_status_found">Trouvé : %1$s</string>
     <string name="ble_status_not_found">Non trouvé</string>
     <string name="ble_status_connecting">Connexion...</string>
-    <string name="ble_status_restoring">Restauration de la connexion...</string>
     <string name="ble_status_connected">Connecté</string>
     <string name="ble_status_invalid_pin">PIN incorrect</string>
     <string name="ble_status_timeout">Délai de connexion écoulé</string>

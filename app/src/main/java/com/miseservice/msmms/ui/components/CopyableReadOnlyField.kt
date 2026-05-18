@@ -5,7 +5,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -18,7 +18,7 @@ fun CopyableReadOnlyField(
     modifier: Modifier = Modifier,
     label: @Composable () -> Unit
 ) {
-    OutlinedTextField(
+    TextField(
         value = value,
         onValueChange = {},
         label = label,

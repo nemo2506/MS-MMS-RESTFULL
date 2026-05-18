@@ -15,10 +15,10 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -258,7 +258,7 @@ fun BleConfigSection(
          horizontalArrangement = Arrangement.spacedBy(12.dp),
          verticalAlignment = Alignment.CenterVertically
      ) {
-         OutlinedTextField(
+         TextField(
              value = minInput,
              onValueChange = { value ->
                  val digits = value.filter { it.isDigit() }.take(3)
@@ -285,7 +285,7 @@ fun BleConfigSection(
              colors = smsOvhTextFieldColors()
          )
 
-         OutlinedTextField(
+         TextField(
              value = maxInput,
              onValueChange = { value ->
                  val digits = value.filter { it.isDigit() }.take(3)

@@ -15,5 +15,4 @@ class SettingsRepository @Inject constructor(
     suspend fun saveSettings(settings: AppSettingsEntity) = settingsDao.saveSettings(settings)
     suspend fun updateToken(token: String) = settingsDao.updateToken(token)
     suspend fun updateRestPort(restPort: Int) = settingsDao.updateRestPort(restPort)
-    suspend fun updateBleConnectionActive(active: Boolean) = settingsDao.updateBleConnectionActive(active)
 }
