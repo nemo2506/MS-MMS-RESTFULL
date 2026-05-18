@@ -8,6 +8,7 @@ import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationManager
 import android.os.Build
+import android.telephony.TelephonyManager
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -59,6 +60,7 @@ import com.miseservice.msmms.ui.components.dialogs.BluetoothPermissionDeniedDial
 import com.miseservice.msmms.ui.components.dialogs.BluetoothPermissionRequiredDialog
 import com.miseservice.msmms.ui.components.dialogs.PermissionActionDialog
 import com.miseservice.msmms.ui.components.dialogs.SmsPermissionDialog
+import com.miseservice.msmms.ui.components.dialogs.SystemStatusDialog
 import com.miseservice.msmms.util.NetworkInfoProvider
 import com.miseservice.msmms.viewmodel.FeedbackType
 import com.miseservice.msmms.viewmodel.MainViewModel
@@ -571,6 +573,36 @@ fun MainScreen(
     val token by viewModel.token.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
+    // Surveillance SIM toutes les 5 secondes
+    LaunchedEffect(Unit) {
+        while (true) {
+            val tm = context.getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
+            val simReady = tm?.simState == TelephonyManager.SIM_STATE_READY
+            viewModel.updateSimNetworkStatus(simReady)
+            delay(5000L)
+        }
+    }
+
+    // Dialogue état système persistant (4 conditions)
+    val bleConnected = uiState.bleDeviceState == com.miseservice.msmms.model.BleDeviceState.Connected
+    val allHealthy = uiState.serviceActive && uiState.isIpValid && bleConnected && uiState.simNetworkAvailable
+    var systemStatusDismissed by rememberSaveable { mutableStateOf(false) }
+
+    // Réaffiche le dialogue si une nouvelle condition d'erreur apparaît après fermeture
+    LaunchedEffect(allHealthy) {
+        if (!allHealthy) systemStatusDismissed = false
+    }
+
+    if (!allHealthy && !systemStatusDismissed) {
+        SystemStatusDialog(
+            serviceActive = uiState.serviceActive,
+            networkConnected = uiState.isIpValid,
+            bluetoothConnected = bleConnected,
+            simNetworkAvailable = uiState.simNetworkAvailable,
+            onDismiss = { systemStatusDismissed = true }
+        )
+    }
+
     LaunchedEffect(uiState.switchCommandStatusMessage) {
         val snackbarMessage = uiState.switchCommandStatusMessage ?: return@LaunchedEffect
         snackbarHostState.showSnackbar(message = snackbarMessage)
@@ -847,7 +879,9 @@ fun MainScreen(
                                 wifiLoading = uiState.bleWifiLoading,
                                 relayEnabled = uiState.bleRelayState == BleRelayState.On,
                                 wifiEnabled = uiState.bleWifiEnabled,
-                                connectionStatus = when (uiState.bleDeviceState) {
+                                connectionStatus = when {
+                                    uiState.bleRestoringConnection -> stringResource(R.string.ble_status_restoring)
+                                    else -> when (uiState.bleDeviceState) {
                                     BleDeviceState.Idle -> stringResource(R.string.ble_status_idle)
                                     BleDeviceState.Scanning -> stringResource(R.string.ble_status_scanning)
                                     is BleDeviceState.Found -> stringResource(R.string.ble_status_found, uiState.bleDeviceState.name)
@@ -860,6 +894,7 @@ fun MainScreen(
                                     BleDeviceState.CharacteristicNotFound -> stringResource(R.string.ble_status_characteristic_not_found)
                                     is BleDeviceState.Error -> stringResource(R.string.ble_status_error, uiState.bleDeviceState.message)
                                     BleDeviceState.Disconnected -> stringResource(R.string.ble_status_disconnected)
+                                    }
                                 },
                                 errorMessage = uiState.bleErrorMessage,
                                 onBatteryMinChange = { viewModel.setBleBatteryMin(it) },

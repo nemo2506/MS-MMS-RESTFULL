@@ -54,6 +54,8 @@ class MainViewModel @Inject constructor(
     private var restPortEditingUnlockJob: Job? = null
     private var autoRelayMonitorJob: Job? = null
     private var lastAppliedServiceActive: Boolean? = null
+    private var bleConnectionDesiredActive: Boolean = false
+    private var hasAttemptedBleRestore: Boolean = false
     @Volatile
     private var isRestPortEditing: Boolean = false
     private var pendingObservedSettings: com.miseservice.msmms.data.local.AppSettingsEntity? = null
@@ -200,6 +202,7 @@ class MainViewModel @Inject constructor(
                 restPort = state.restPort,
                 token = currentToken,
                 blePin = state.blePin,
+                bleConnectionActive = bleConnectionDesiredActive,
                 bleMinBattery = state.bleMinBattery,
                 bleMaxBattery = state.bleMaxBattery
             )
@@ -236,6 +239,8 @@ class MainViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             val secureToken = ApiTokenManager.getToken(context)
+            // Afficher immédiatement le token dès le 1er démarrage, sans attendre Room
+            _token.value = secureToken
             var settings = getSettingsUseCase()
             if (settings == null) {
                 settings = com.miseservice.msmms.data.local.AppSettingsEntity(
@@ -253,6 +258,7 @@ class MainViewModel @Inject constructor(
                     restPort = DEFAULT_REST_PORT,
                     token = secureToken,
                     blePin = null,
+                    bleConnectionActive = false,
                     bleMinBattery = 20,
                     bleMaxBattery = 80
                 )
@@ -266,11 +272,19 @@ class MainViewModel @Inject constructor(
 
             settingsRepository.observeSettings().collect { observed ->
                 val currentSettings = observed ?: return@collect
+                bleConnectionDesiredActive = currentSettings.bleConnectionActive
                 _token.value = currentSettings.token ?: secureToken
                 if (isRestPortEditing) {
                     pendingObservedSettings = currentSettings
                 }
                 applyObservedSettings(currentSettings)
+
+                // Restaure l'intention de connexion Bluetooth au prochain démarrage.
+                if (currentSettings.bleConnectionActive && !hasAttemptedBleRestore) {
+                    hasAttemptedBleRestore = true
+                    val savedPin = currentSettings.blePin.orEmpty().ifBlank { BleRuntimeConfig.pin }
+                    connectBleDevice(savedPin, fromRestore = true)
+                }
             }
         }
 
@@ -323,6 +337,12 @@ class MainViewModel @Inject constructor(
 
     fun dismissBatteryOptimizationDialog() {
         _uiState.value = _uiState.value.copy(batteryOptimizationDialogVisible = false)
+    }
+
+    fun updateSimNetworkStatus(available: Boolean) {
+        if (_uiState.value.simNetworkAvailable != available) {
+            _uiState.value = _uiState.value.copy(simNetworkAvailable = available)
+        }
     }
 
     fun setSenderId(senderId: String) {
@@ -692,10 +712,11 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun connectBleDevice(pin: String = BleRuntimeConfig.pin) {
+    fun connectBleDevice(pin: String = BleRuntimeConfig.pin, fromRestore: Boolean = false) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(
                 bleDeviceState = BleDeviceState.Connecting,
+                bleRestoringConnection = fromRestore,
                 bleErrorMessage = null,
                 switchCommandStatusMessage = context.getString(R.string.bluetooth_command_sent)
             )
@@ -711,6 +732,7 @@ class MainViewModel @Inject constructor(
                 } else {
                     _uiState.value = _uiState.value.copy(
                         bleDeviceState = scanned,
+                        bleRestoringConnection = false,
                         bleErrorMessage = resolveBleErrorMessage(scanned),
                         switchCommandStatusMessage = context.getString(R.string.bluetooth_command_failed)
                     )
@@ -724,6 +746,7 @@ class MainViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(
                 bleDeviceState = result,
                 blePin = if (connected) pin else _uiState.value.blePin,
+                bleRestoringConnection = false,
                 bleErrorMessage = if (connected) null else resolveBleErrorMessage(result),
                 bleRelayState = when (remoteState) {
                     BleRelayState.On, BleRelayState.Off -> remoteState
@@ -740,6 +763,8 @@ class MainViewModel @Inject constructor(
                 }
             )
             if (connected) {
+                bleConnectionDesiredActive = true
+                settingsRepository.updateBleConnectionActive(true)
                 schedulePersistCurrentSettings()
             }
         }
@@ -838,11 +863,16 @@ class MainViewModel @Inject constructor(
     fun disconnectBle() {
         _uiState.value = _uiState.value.copy(
             bleDeviceState = BleDeviceState.Disconnected,
+            bleRestoringConnection = false,
             bleRelayState = BleRelayState.Unknown,
             bleWifiEnabled = false,
             bleErrorMessage = null,
             switchCommandStatusMessage = context.getString(R.string.bluetooth_command_confirmed)
         )
+        bleConnectionDesiredActive = false
+        viewModelScope.launch {
+            settingsRepository.updateBleConnectionActive(false)
+        }
     }
 
     fun sendRelayOnCommand() {

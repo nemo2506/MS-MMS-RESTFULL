@@ -37,6 +37,14 @@
     <string name="connected_ip_label">Connected IP</string>
     <string name="api_endpoints_title">API ENDPOINTS</string>
     <string name="api_token_section_title">SECURITY</string>
+    <!-- System status dialog -->
+    <string name="system_status_dialog_title">SYSTEM STATUS</string>
+    <string name="system_status_dialog_subtitle">One or more conditions are required for proper operation.</string>
+    <string name="system_status_service">REST service active</string>
+    <string name="system_status_network">Wi-Fi network connected</string>
+    <string name="system_status_bluetooth">Bluetooth connected</string>
+    <string name="system_status_sim">SIM network available</string>
+    <string name="system_status_vu">GOT IT</string>
     <string name="endpoint_send_label">POST /api/send-message</string>
     <string name="endpoint_logs_label">POST /api/logs</string>
     <string name="endpoint_battery_label">GET /api/battery</string>
@@ -197,6 +205,7 @@
     <string name="ble_status_found">Found: %1$s</string>
     <string name="ble_status_not_found">Not found</string>
     <string name="ble_status_connecting">Connecting…</string>
+    <string name="ble_status_restoring">Restoring connection…</string>
     <string name="ble_status_connected">Connected</string>
     <string name="ble_status_invalid_pin">Invalid PIN</string>
     <string name="ble_status_timeout">Connection timeout</string>

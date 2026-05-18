@@ -20,6 +20,7 @@ data class AppSettingsEntity(
     val restPort: Int = 8080,
     val token: String? = null,
     val blePin: String? = null,
+    val bleConnectionActive: Boolean = false,
     val bleMinBattery: Int = 20,
     val bleMaxBattery: Int = 80
 )

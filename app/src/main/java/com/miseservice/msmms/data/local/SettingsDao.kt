@@ -19,4 +19,7 @@ interface SettingsDao {
 
     @Query("UPDATE app_settings SET restPort = :restPort WHERE id = 1")
     suspend fun updateRestPort(restPort: Int)
+
+    @Query("UPDATE app_settings SET bleConnectionActive = :active WHERE id = 1")
+    suspend fun updateBleConnectionActive(active: Boolean)
 }

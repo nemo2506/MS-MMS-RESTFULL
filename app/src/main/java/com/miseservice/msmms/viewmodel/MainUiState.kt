@@ -53,13 +53,15 @@ data class MainUiState(
     val bleWifiEnabled: Boolean = false,
     val bleDeviceAddress: String = "",
     val blePin: String = "",
+    val bleRestoringConnection: Boolean = false,
     val bleErrorMessage: String? = null,
     val bleRelayLoading: Boolean = false,
     val bleWifiLoading: Boolean = false,
     val switchCommandStatusMessage: String? = null,
     val smsDeniedDialogMode: SmsDeniedDialogMode = SmsDeniedDialogMode.NONE,
     val smsDeniedForSendAction: Boolean = false,
-    val batteryOptimizationDialogVisible: Boolean = false
+    val batteryOptimizationDialogVisible: Boolean = false,
+    val simNetworkAvailable: Boolean = false
 ) {
     val canSendLocalSms: Boolean
         get() = serviceActive && !isLoading && recipient.isNotBlank() && message.isNotBlank()
