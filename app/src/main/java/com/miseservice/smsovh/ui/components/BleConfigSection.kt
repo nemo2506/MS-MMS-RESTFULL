@@ -60,6 +60,7 @@ fun BleConfigSection(
 ) {
     val labelSize = 15.sp
     val sectionSpacing = 14.dp
+    val rowMinHeight = 52.dp
     val connected = isConnected
     val resolvedConnectionStatus = connectionStatus.ifBlank {
         stringResource(R.string.bluetooth_status_disconnected)
@@ -107,7 +108,9 @@ fun BleConfigSection(
     }
 
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = rowMinHeight),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
@@ -164,7 +167,7 @@ fun BleConfigSection(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 52.dp),
+            .heightIn(min = rowMinHeight),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
@@ -204,7 +207,7 @@ fun BleConfigSection(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 52.dp),
+            .heightIn(min = rowMinHeight),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
@@ -256,7 +259,9 @@ fun BleConfigSection(
                  }
              },
              label = { Text(stringResource(R.string.bluetooth_battery_min_label), fontSize = labelSize) },
-             modifier = Modifier.weight(1f),
+             modifier = Modifier
+                 .weight(1f)
+                 .heightIn(min = 56.dp),
              singleLine = true,
              keyboardOptions = KeyboardOptions(
                  keyboardType = KeyboardType.Number,
@@ -281,7 +286,9 @@ fun BleConfigSection(
                  }
              },
              label = { Text(stringResource(R.string.bluetooth_battery_max_label), fontSize = labelSize) },
-             modifier = Modifier.weight(1f),
+             modifier = Modifier
+                 .weight(1f)
+                 .heightIn(min = 56.dp),
              singleLine = true,
              keyboardOptions = KeyboardOptions(
                  keyboardType = KeyboardType.Number,

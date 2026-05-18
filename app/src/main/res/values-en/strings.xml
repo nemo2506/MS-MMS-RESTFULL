@@ -106,6 +106,9 @@
     <string name="location_not_authorized">Not authorized</string>
     <string name="location_loading">Loading…</string>
     <string name="reset_token_label">🔁 RESET</string>
+    <string name="reset_token_dialog_title">Reset API token</string>
+    <string name="reset_token_dialog_message">Do you want to generate a new API token?</string>
+    <string name="reset_token_dialog_confirm">Confirm</string>
     <string name="copy_to_clipboard_content_description">Copy to clipboard</string>
     <string name="battery_optimization_title">Disable battery optimization</string>
     <string name="battery_optimization_message">To ensure reliable SMS sending, please disable battery optimization for this app.</string>
@@ -196,4 +199,13 @@
     <string name="ble_status_characteristic_not_found">Characteristic not found</string>
     <string name="ble_status_error">Error: %1$s</string>
     <string name="ble_status_disconnected">Disconnected</string>
+    <string name="relay_command_sent">Relay command sent</string>
+    <string name="relay_command_confirmed">Relay command confirmed</string>
+    <string name="relay_command_failed">Relay command failed</string>
+    <string name="wifi_command_sent">Wi-Fi command sent</string>
+    <string name="wifi_command_confirmed">Wi-Fi command confirmed</string>
+    <string name="wifi_command_failed">Wi-Fi command failed</string>
+    <string name="bluetooth_command_sent">Bluetooth command sent</string>
+    <string name="bluetooth_command_confirmed">Bluetooth command confirmed</string>
+    <string name="bluetooth_command_failed">Bluetooth command failed</string>
 </resources>

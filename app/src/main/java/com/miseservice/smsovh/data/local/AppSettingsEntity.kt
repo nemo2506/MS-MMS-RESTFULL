@@ -19,5 +19,7 @@ data class AppSettingsEntity(
     val hostIp: String?,
     val restPort: Int = 8080,
     val token: String? = null,
-    val blePin: String? = null
+    val blePin: String? = null,
+    val bleMinBattery: Int = 20,
+    val bleMaxBattery: Int = 80
 )

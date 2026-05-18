@@ -240,9 +240,9 @@ object SmsHelper {
                     complete(
                         false,
                         JSONObject().apply {
-                            val message = e.message ?: string(context, R.string.smshelper_smsmanager_unavailable)
+                            val errorMessage = e.message ?: string(context, R.string.smshelper_smsmanager_unavailable)
                             put("success", false)
-                            put("error", string(context, R.string.smshelper_mms_error, message))
+                            put("error", string(context, R.string.smshelper_mms_error, errorMessage))
                             put("code", errorCodeFromException(context, e))
                             put("type", string(context, R.string.smshelper_mms_type))
                         }

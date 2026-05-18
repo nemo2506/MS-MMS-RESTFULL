@@ -1,6 +1,10 @@
 package com.miseservice.smsovh.viewmodel
 
+import android.content.Intent
+import android.content.IntentFilter
+import android.os.BatteryManager
 import android.content.Context
+import android.util.Log
 import com.miseservice.smsovh.R
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -48,6 +52,7 @@ class MainViewModel @Inject constructor(
 ) : ViewModel() {
     private var saveSettingsJob: Job? = null
     private var restPortEditingUnlockJob: Job? = null
+    private var autoRelayMonitorJob: Job? = null
     private var lastAppliedServiceActive: Boolean? = null
     @Volatile
     private var isRestPortEditing: Boolean = false
@@ -57,6 +62,7 @@ class MainViewModel @Inject constructor(
         const val SETTINGS_SAVE_DEBOUNCE_MS = 500L
         const val DEFAULT_REST_PORT = 8080
         const val REST_PORT_EDIT_GRACE_MS = 5000L
+        const val AUTO_RELAY_CHECK_INTERVAL_MS = 60_000L
     }
 
     private fun beginRestPortEditingWindow() {
@@ -104,7 +110,9 @@ class MainViewModel @Inject constructor(
             serviceActive = currentSettings.serviceActive,
             hostIp = host,
             isIpValid = isHostIpUsable(host),
-            blePin = currentSettings.blePin.orEmpty()
+            blePin = currentSettings.blePin.orEmpty(),
+            bleMinBattery = currentSettings.bleMinBattery,
+            bleMaxBattery = currentSettings.bleMaxBattery
         )
 
         _uiState.value = if (isRestPortEditing) {
@@ -115,6 +123,48 @@ class MainViewModel @Inject constructor(
                 restPortInput = restPort.toString(),
                 restPortError = null
             )
+        }
+        syncAutoRelayMonitorWithServiceState()
+    }
+
+    private fun syncAutoRelayMonitorWithServiceState() {
+        if (_uiState.value.serviceActive) {
+            startAutoRelayMonitor()
+        } else {
+            stopAutoRelayMonitor()
+        }
+    }
+
+    private fun startAutoRelayMonitor() {
+        if (autoRelayMonitorJob?.isActive == true) return
+        autoRelayMonitorJob = viewModelScope.launch {
+            while (true) {
+                evaluateBatteryRuleAndExecute()
+                delay(AUTO_RELAY_CHECK_INTERVAL_MS)
+            }
+        }
+    }
+
+    private fun stopAutoRelayMonitor() {
+        autoRelayMonitorJob?.cancel()
+        autoRelayMonitorJob = null
+    }
+
+    private fun evaluateBatteryRuleAndExecute() {
+        val state = _uiState.value
+        if (!state.serviceActive) return
+        if (state.bleDeviceState != BleDeviceState.Connected) return
+        if (state.bleRelayLoading) return
+
+        val batteryPercent = getCurrentBatteryPercent() ?: return
+        Log.d("POWER_RULE", "battery=$batteryPercent min=${state.bleMinBattery} max=${state.bleMaxBattery} relay=${state.bleRelayState}")
+
+        if (state.bleRelayState != BleRelayState.On && batteryPercent < state.bleMinBattery) {
+            sendRelayOnCommand()
+            return
+        }
+        if (state.bleRelayState == BleRelayState.On && batteryPercent > state.bleMaxBattery) {
+            sendRelayOffCommand()
         }
     }
 
@@ -149,7 +199,9 @@ class MainViewModel @Inject constructor(
                 hostIp = state.hostIp,
                 restPort = state.restPort,
                 token = currentToken,
-                blePin = state.blePin
+                blePin = state.blePin,
+                bleMinBattery = state.bleMinBattery,
+                bleMaxBattery = state.bleMaxBattery
             )
             settingsRepository.saveSettings(entity)
         }
@@ -200,7 +252,9 @@ class MainViewModel @Inject constructor(
                     hostIp = null,
                     restPort = DEFAULT_REST_PORT,
                     token = secureToken,
-                    blePin = null
+                    blePin = null,
+                    bleMinBattery = 20,
+                    bleMaxBattery = 80
                 )
                 settingsRepository.saveSettings(settings)
             } else {
@@ -365,6 +419,7 @@ class MainViewModel @Inject constructor(
                     isLoading = false,
                     serviceToggleTargetActive = null
                 )
+                syncAutoRelayMonitorWithServiceState()
             }.onSuccess {
                 schedulePersistCurrentSettings()
                 delay(3000)
@@ -494,12 +549,7 @@ class MainViewModel @Inject constructor(
          val clamped = percent.coerceIn(0, 100)
          _uiState.value = _uiState.value.copy(bleMinBattery = clamped)
          schedulePersistCurrentSettings()
-         
-          // Workflow d'activation : si Min <= seuil ET relais = off, activer le relais
-          val state = _uiState.value
-          if (state.bleRelayState == BleRelayState.Off && clamped <= 20) {
-              sendRelayOnCommand()
-          }
+         evaluateBatteryRuleAndExecute()
       }
 
     /**
@@ -512,13 +562,17 @@ class MainViewModel @Inject constructor(
          val clamped = percent.coerceIn(0, 100)
          _uiState.value = _uiState.value.copy(bleMaxBattery = clamped)
          schedulePersistCurrentSettings()
-         
-          // Workflow de désactivation : si Max >= seuil ET relais = on, désactiver le relais
-          val state = _uiState.value
-          if (state.bleRelayState == BleRelayState.On && clamped >= 80) {
-              sendRelayOffCommand()
-          }
+         evaluateBatteryRuleAndExecute()
      }
+
+    private fun getCurrentBatteryPercent(): Int? {
+        val batteryIntent = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+            ?: return null
+        val level = batteryIntent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
+        val scale = batteryIntent.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
+        if (level < 0 || scale <= 0) return null
+        return ((level * 100f) / scale).toInt().coerceIn(0, 100)
+    }
 
     private fun resolveBleErrorMessage(state: BleDeviceState): String? = when (state) {
         BleDeviceState.InvalidPin -> context.getString(R.string.bluetooth_error_invalid_pin)
@@ -623,7 +677,8 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(
                 bleDeviceState = BleDeviceState.Connecting,
-                bleErrorMessage = null
+                bleErrorMessage = null,
+                switchCommandStatusMessage = context.getString(R.string.bluetooth_command_sent)
             )
 
             val address = _uiState.value.bleDeviceAddress
@@ -637,7 +692,8 @@ class MainViewModel @Inject constructor(
                 } else {
                     _uiState.value = _uiState.value.copy(
                         bleDeviceState = scanned,
-                        bleErrorMessage = resolveBleErrorMessage(scanned)
+                        bleErrorMessage = resolveBleErrorMessage(scanned),
+                        switchCommandStatusMessage = context.getString(R.string.bluetooth_command_failed)
                     )
                     return@launch
                 }
@@ -650,10 +706,18 @@ class MainViewModel @Inject constructor(
                 bleDeviceState = result,
                 blePin = if (connected) pin else _uiState.value.blePin,
                 bleErrorMessage = if (connected) null else resolveBleErrorMessage(result),
-                bleRelayState = remoteState ?: _uiState.value.bleRelayState,
+                bleRelayState = when (remoteState) {
+                    BleRelayState.On, BleRelayState.Off -> remoteState
+                    else -> _uiState.value.bleRelayState
+                },
                 bleWifiEnabled = when (remoteState) {
                     is BleRelayState.WebServer -> true
                     else -> if (connected) _uiState.value.bleWifiEnabled else false
+                },
+                switchCommandStatusMessage = if (connected) {
+                    context.getString(R.string.bluetooth_command_confirmed)
+                } else {
+                    context.getString(R.string.bluetooth_command_failed)
                 }
             )
             if (connected) {
@@ -663,41 +727,91 @@ class MainViewModel @Inject constructor(
     }
 
     fun sendBleCommand(command: BleCommand) {
-        // Activer le loader selon le type de commande
-        _uiState.value = _uiState.value.copy(
-            bleRelayLoading = command == BleCommand.RelayOn || command == BleCommand.RelayOff,
-            bleWifiLoading  = command == BleCommand.WifiOn  || command == BleCommand.WifiOff
+        val isRelayCommand = command == BleCommand.RelayOn || command == BleCommand.RelayOff
+        val isWifiCommand = command == BleCommand.WifiOn || command == BleCommand.WifiOff
+
+        // Activer uniquement le loader concerné pour garder les commandes indépendantes.
+        val loadingState = _uiState.value
+        _uiState.value = loadingState.copy(
+            bleRelayLoading = if (isRelayCommand) true else loadingState.bleRelayLoading,
+            bleWifiLoading = if (isWifiCommand) true else loadingState.bleWifiLoading,
+            switchCommandStatusMessage = when {
+                isRelayCommand -> context.getString(R.string.relay_command_sent)
+                isWifiCommand -> context.getString(R.string.wifi_command_sent)
+                else -> loadingState.switchCommandStatusMessage
+            }
         )
         viewModelScope.launch {
-            val result = sendBleCommandUseCase(command)
-            val wifiEnabled = when (command) {
-                BleCommand.WifiOn  -> true
-                BleCommand.WifiOff -> false
-                else -> when (result) {
-                    is BleRelayState.WebServer -> true
-                    else -> _uiState.value.bleWifiEnabled
+            runCatching {
+                sendBleCommandUseCase(command)
+            }.onSuccess { result ->
+                val current = _uiState.value
+                val wifiEnabled = when (command) {
+                    BleCommand.WifiOn -> true
+                    BleCommand.WifiOff -> false
+                    else -> when (result) {
+                        is BleRelayState.WebServer -> true
+                        else -> current.bleWifiEnabled
+                    }
                 }
+
+                val newRelayState = when (command) {
+                    BleCommand.RelayOn -> when (result) {
+                        BleRelayState.On, BleRelayState.Off -> result
+                        else -> BleRelayState.On
+                    }
+
+                    BleCommand.RelayOff -> when (result) {
+                        BleRelayState.On, BleRelayState.Off -> result
+                        else -> BleRelayState.Off
+                    }
+
+                    BleCommand.WifiOn, BleCommand.WifiOff -> current.bleRelayState
+                }
+
+                _uiState.value = current.copy(
+                    bleRelayState = newRelayState,
+                    bleWifiEnabled = wifiEnabled,
+                    bleRelayLoading = if (isRelayCommand) false else current.bleRelayLoading,
+                    bleWifiLoading = if (isWifiCommand) false else current.bleWifiLoading,
+                    switchCommandStatusMessage = when {
+                        isRelayCommand -> context.getString(R.string.relay_command_confirmed)
+                        isWifiCommand -> context.getString(R.string.wifi_command_confirmed)
+                        else -> current.switchCommandStatusMessage
+                    }
+                )
+            }.onFailure {
+                val current = _uiState.value
+                _uiState.value = current.copy(
+                    bleRelayLoading = if (isRelayCommand) false else current.bleRelayLoading,
+                    bleWifiLoading = if (isWifiCommand) false else current.bleWifiLoading,
+                    switchCommandStatusMessage = when {
+                        isRelayCommand -> context.getString(R.string.relay_command_failed)
+                        isWifiCommand -> context.getString(R.string.wifi_command_failed)
+                        else -> current.switchCommandStatusMessage
+                    }
+                )
             }
-            // Fix : ne pas écraser bleRelayState si la commande est Wifi
-            val newRelayState = when (command) {
-                BleCommand.WifiOn, BleCommand.WifiOff -> _uiState.value.bleRelayState
-                else -> result
-            }
-            _uiState.value = _uiState.value.copy(
-                bleRelayState  = newRelayState,
-                bleWifiEnabled = wifiEnabled,
-                bleRelayLoading = false,
-                bleWifiLoading  = false
-            )
         }
+    }
+
+    fun consumeSwitchCommandStatusMessage() {
+        _uiState.value = _uiState.value.copy(switchCommandStatusMessage = null)
     }
 
     fun readBleState() {
         viewModelScope.launch {
             val result = readBleStateUseCase()
-            _uiState.value = _uiState.value.copy(
-                bleRelayState = result,
-                bleWifiEnabled = result is BleRelayState.WebServer
+            val current = _uiState.value
+            _uiState.value = current.copy(
+                bleRelayState = when (result) {
+                    BleRelayState.On, BleRelayState.Off -> result
+                    else -> current.bleRelayState
+                },
+                bleWifiEnabled = when (result) {
+                    is BleRelayState.WebServer -> true
+                    else -> current.bleWifiEnabled
+                }
             )
         }
     }
@@ -707,7 +821,8 @@ class MainViewModel @Inject constructor(
             bleDeviceState = BleDeviceState.Disconnected,
             bleRelayState = BleRelayState.Unknown,
             bleWifiEnabled = false,
-            bleErrorMessage = null
+            bleErrorMessage = null,
+            switchCommandStatusMessage = context.getString(R.string.bluetooth_command_confirmed)
         )
     }
 
@@ -735,6 +850,7 @@ class MainViewModel @Inject constructor(
     override fun onCleared() {
         saveSettingsJob?.cancel()
         restPortEditingUnlockJob?.cancel()
+        stopAutoRelayMonitor()
         persistCurrentSettingsNow()
         super.onCleared()
     }

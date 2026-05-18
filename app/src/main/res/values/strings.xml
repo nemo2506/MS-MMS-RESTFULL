@@ -106,6 +106,9 @@
     <string name="location_not_authorized">Non autorisée</string>
     <string name="location_loading">En cours…</string>
     <string name="reset_token_label">🔁 RESET</string>
+    <string name="reset_token_dialog_title">Réinitialiser le token API</string>
+    <string name="reset_token_dialog_message">Voulez-vous vraiment générer un nouveau token API ?</string>
+    <string name="reset_token_dialog_confirm">Valider</string>
     <string name="copy_to_clipboard_content_description">Copier dans le presse-papiers</string>
     <string name="battery_optimization_title">"Désactiver l'optimisation de batterie"</string>
     <string name="battery_optimization_message">"Pour garantir la fiabilité de l'envoi de SMS, veuillez désactiver l'optimisation de batterie pour cette application."</string>
@@ -195,4 +198,13 @@
     <string name="ble_status_characteristic_not_found">Caractéristique non trouvée</string>
     <string name="ble_status_error">Erreur : %1$s</string>
     <string name="ble_status_disconnected">Déconnecté</string>
+    <string name="relay_command_sent">Commande relais envoyée</string>
+    <string name="relay_command_confirmed">Commande relais confirmée</string>
+    <string name="relay_command_failed">Échec commande relais</string>
+    <string name="wifi_command_sent">Commande Wi-Fi envoyée</string>
+    <string name="wifi_command_confirmed">Commande Wi-Fi confirmée</string>
+    <string name="wifi_command_failed">Échec commande Wi-Fi</string>
+    <string name="bluetooth_command_sent">Commande Bluetooth envoyée</string>
+    <string name="bluetooth_command_confirmed">Commande Bluetooth confirmée</string>
+    <string name="bluetooth_command_failed">Échec commande Bluetooth</string>
 </resources>

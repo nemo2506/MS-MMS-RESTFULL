@@ -26,6 +26,7 @@ import androidx.compose.material.icons.outlined.SettingsEthernet
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -309,14 +310,25 @@ fun MainScreen(
 
     // Récupération du token API sécurisé
     val token by viewModel.token.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    Column(
+    LaunchedEffect(uiState.switchCommandStatusMessage) {
+        val snackbarMessage = uiState.switchCommandStatusMessage ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(message = snackbarMessage)
+        viewModel.consumeSwitchCommandStatusMessage()
+    }
+
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .verticalScroll(rememberScrollState())
-            .padding(20.dp)
     ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(20.dp)
+        ) {
 
         uiState.feedbackMessage?.let { feedbackMessage ->
             Card(
@@ -386,14 +398,6 @@ fun MainScreen(
                     onRequestSmsPermission = onRequestSmsPermission,
                     onSendSmsRequested = onSendSmsRequested
                 )
-                Button(
-                    onClick = { viewModel.sendOvhSms() },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = uiState.canSendOvhSms,
-                    colors = smsOvhButtonColors()
-                ) {
-                    Text(stringResource(R.string.send_via_ovh_api))
-                }
             }
 
             // Onglet 1 : "OVH" — Configuration OVH
@@ -504,6 +508,14 @@ fun MainScreen(
                 )
             }
         }
+    }
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(16.dp)
+        )
     }
 }
 

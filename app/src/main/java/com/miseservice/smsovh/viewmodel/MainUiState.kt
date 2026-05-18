@@ -55,7 +55,8 @@ data class MainUiState(
     val blePin: String = "",
     val bleErrorMessage: String? = null,
     val bleRelayLoading: Boolean = false,
-    val bleWifiLoading: Boolean = false
+    val bleWifiLoading: Boolean = false,
+    val switchCommandStatusMessage: String? = null
 ) {
     val canSendLocalSms: Boolean
         get() = serviceActive && !isLoading && recipient.isNotBlank() && message.isNotBlank()

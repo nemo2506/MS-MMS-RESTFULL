@@ -10,13 +10,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.colorResource
@@ -42,6 +47,28 @@ fun ApiNetworkSection(
     onCopy: (String, String) -> Unit
 ) {
     val emphasizedLabelSize = 18.sp
+    var showResetTokenDialog by rememberSaveable { mutableStateOf(false) }
+
+    if (showResetTokenDialog) {
+        AlertDialog(
+            onDismissRequest = { showResetTokenDialog = false },
+            title = { Text(text = stringResource(R.string.reset_token_dialog_title)) },
+            text = { Text(text = stringResource(R.string.reset_token_dialog_message)) },
+            confirmButton = {
+                Button(onClick = {
+                    showResetTokenDialog = false
+                    onResetToken()
+                }) {
+                    Text(text = stringResource(R.string.reset_token_dialog_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showResetTokenDialog = false }) {
+                    Text(text = stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
 
     HorizontalDivider(color = MaterialTheme.colorScheme.outline, thickness = 1.dp)
     Spacer(Modifier.height(12.dp))
@@ -98,43 +125,42 @@ fun ApiNetworkSection(
         ""
     }
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 2.dp)
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Text(
+            text = stringResource(R.string.api_endpoints_title),
+            color = colorResource(id = R.color.smsovh_primary),
+            fontWeight = FontWeight.Bold,
+            fontSize = 15.sp
+        )
+        Spacer(Modifier.height(10.dp))
+        if (uiState.isIpValid) {
+            CopyableReadOnlyField(
+                value = sendEndpoint,
+                onCopy = { onCopy("send-endpoint", sendEndpoint) },
+                label = { Text(stringResource(R.string.endpoint_send_label)) }
+            )
+            Spacer(Modifier.height(10.dp))
+            CopyableReadOnlyField(
+                value = logsEndpoint,
+                onCopy = { onCopy("logs-endpoint", logsEndpoint) },
+                label = { Text(stringResource(R.string.endpoint_logs_label)) }
+            )
+            Spacer(Modifier.height(10.dp))
+            CopyableReadOnlyField(
+                value = batteryEndpoint,
+                onCopy = { onCopy("battery-endpoint", batteryEndpoint) },
+                label = { Text(stringResource(R.string.endpoint_battery_label)) }
+            )
+        } else {
             Text(
-                text = stringResource(R.string.api_endpoints_title),
-                color = colorResource(id = R.color.smsovh_primary),
-                fontWeight = FontWeight.Bold,
+                text = stringResource(R.string.endpoint_wifi_hint),
+                color = colorResource(id = R.color.white),
                 fontSize = 15.sp
             )
-            Spacer(Modifier.height(8.dp))
-            if (uiState.isIpValid) {
-                CopyableReadOnlyField(
-                    value = sendEndpoint,
-                    onCopy = { onCopy("send-endpoint", sendEndpoint) },
-                    label = { Text(stringResource(R.string.endpoint_send_label)) }
-                )
-                Spacer(Modifier.height(8.dp))
-                CopyableReadOnlyField(
-                    value = logsEndpoint,
-                    onCopy = { onCopy("logs-endpoint", logsEndpoint) },
-                    label = { Text(stringResource(R.string.endpoint_logs_label)) }
-                )
-                Spacer(Modifier.height(8.dp))
-                CopyableReadOnlyField(
-                    value = batteryEndpoint,
-                    onCopy = { onCopy("battery-endpoint", batteryEndpoint) },
-                    label = { Text(stringResource(R.string.endpoint_battery_label)) }
-                )
-            } else {
-                Text(
-                    text = stringResource(R.string.endpoint_wifi_hint),
-                    color = colorResource(id = R.color.white),
-                    fontSize = 15.sp
-                )
-            }
         }
     }
 
@@ -151,7 +177,7 @@ fun ApiNetworkSection(
                     color = colorResource(id = R.color.smsovh_primary),
                     fontSize = 16.5.sp,
                     fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.clickable { onResetToken() }
+                    modifier = Modifier.clickable { showResetTokenDialog = true }
                 )
             }
         }
