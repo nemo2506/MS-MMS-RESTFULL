@@ -1,0 +1,78 @@
+[versions]
+androidGradlePlugin = "8.2.2"
+kotlin = "1.9.22"
+ksp = "1.9.22-1.0.17"
+compileSdk = "34"
+targetSdk = "34"
+minSdk = "26"
+coroutines = "1.7.3"
+room = "2.6.1"
+hilt = "2.50"
+hiltCompiler = "1.0.0"
+composeBom = "2024.05.00"
+composeCompiler = "1.5.8"
+material = "1.11.0"
+appcompat = "1.6.1"
+coreKtx = "1.12.0"
+lifecycleViewmodel = "2.6.1"
+lifecycleRuntimeCompose = "2.7.0"
+activityKtx = "1.8.0"
+activityCompose = "1.9.0"
+nanohttpd = "2.3.1"
+okhttp = "4.12.0"
+securityCrypto = "1.1.0-alpha05"
+junit = "4.13.2"
+testExtJunit = "1.1.5"
+testEspresso = "3.5.1"
+material3 = "1.2.0-alpha10"
+mockito = "5.2.0"
+mockitoKotlin = "5.1.0"
+androidSmsmms = "5.2.6"
+nordicBle = "2.7.0"
+
+[libraries]
+android-gradle-plugin = { group = "com.android.tools.build", name = "gradle", version.ref = "androidGradlePlugin" }
+kotlin-gradle-plugin = { group = "org.jetbrains.kotlin", name = "kotlin-gradle-plugin", version.ref = "kotlin" }
+core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
+nanohttpd = { group = "org.nanohttpd", name = "nanohttpd", version.ref = "nanohttpd" }
+material = { group = "com.google.android.material", name = "material", version.ref = "material" }
+coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
+security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "securityCrypto" }
+lifecycle-viewmodel-ktx = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-ktx", version.ref = "lifecycleViewmodel" }
+lifecycle-runtime-compose = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "lifecycleRuntimeCompose" }
+activity-ktx = { group = "androidx.activity", name = "activity-ktx", version.ref = "activityKtx" }
+activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
+hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
+hilt-android-compiler = { group = "com.google.dagger", name = "hilt-android-compiler", version.ref = "hilt" }
+hilt-compiler = { group = "androidx.hilt", name = "hilt-compiler", version.ref = "hiltCompiler" }
+javax-inject = { group = "javax.inject", name = "javax.inject", version = "1" }
+compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
+compose-ui = { group = "androidx.compose.ui", name = "ui" }
+compose-material3 = { group = "androidx.compose.material3", name = "material3" }
+compose-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
+compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
+compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
+okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
+room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
+room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
+room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
+junit = { group = "junit", name = "junit", version.ref = "junit" }
+test-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "testExtJunit" }
+test-espresso = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "testEspresso" }
+mockito-core = { group = "org.mockito", name = "mockito-core", version.ref = "mockito" }
+mockito-kotlin = { group = "org.mockito.kotlin", name = "mockito-kotlin", version.ref = "mockitoKotlin" }
+coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
+android-smsmms = { group = "com.klinkerapps", name = "android-smsmms", version.ref = "androidSmsmms" }
+nordic-ble = { group = "no.nordicsemi.android", name = "ble", version.ref = "nordicBle" }
+
+[bundles]
+compose = ["compose-ui", "compose-material3", "compose-ui-tooling-preview", "activity-compose", "lifecycle-runtime-compose"]
+room = ["room-runtime", "room-ktx"]
+hilt = ["hilt-android", "javax-inject"]
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "androidGradlePlugin" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }

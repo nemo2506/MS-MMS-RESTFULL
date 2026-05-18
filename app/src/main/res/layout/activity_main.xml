@@ -1,0 +1,378 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/smsovh_background"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp"
+        android:background="@color/smsovh_surface_alt">
+
+        <!-- ══ HEADER ══════════════════════════════════════════════════════════ -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:paddingTop="24dp"
+            android:paddingBottom="32dp"
+            android:background="@color/smsovh_primary_container">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/header_sms"
+                android:textSize="42sp"
+                android:textStyle="bold"
+                android:fontFamily="sans-serif-black"
+                android:letterSpacing="0.15"
+                android:textColor="@color/smsovh_primary"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/header_ovh"
+                android:textSize="13sp"
+                android:textColor="@color/smsovh_on_primary"
+                android:letterSpacing="0.08"/>
+        </LinearLayout>
+
+        <!-- ══ SECTION : CONFIGURATION ════════════════════════════════════════ -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/config_ovh"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.12"
+            android:textColor="@color/smsovh_primary"
+            android:layout_marginBottom="12dp"/>
+
+        <!-- Service Name (Sender ID) -->
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilServiceName"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/sender_id_hint"
+            app:boxStrokeColor="@color/smsovh_primary"
+            app:hintTextColor="@color/smsovh_on_dark"
+            app:boxBackgroundColor="@color/card_bg"
+            android:layout_marginBottom="14dp">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etServiceName"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="text"
+                android:maxLength="11"
+                android:textColor="@color/text_primary"
+                android:textSize="15sp"/>
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <!-- Login OVH -->
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilLogin"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/login_hint"
+            app:boxStrokeColor="@color/smsovh_primary"
+            app:hintTextColor="@color/smsovh_on_dark"
+            app:boxBackgroundColor="@color/card_bg"
+            android:layout_marginBottom="14dp">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etLogin"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="text"
+                android:textColor="@color/text_primary"
+                android:textSize="15sp"/>
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <!-- Password OVH -->
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilPassword"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/password_hint"
+            app:boxStrokeColor="@color/smsovh_primary"
+            app:hintTextColor="@color/smsovh_on_dark"
+            app:boxBackgroundColor="@color/card_bg"
+            app:endIconMode="password_toggle"
+            android:layout_marginBottom="24dp">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etPassword"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textPassword"
+                android:textColor="@color/text_primary"
+                android:textSize="15sp"/>
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <!-- Divider -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/divider"
+            android:layout_marginBottom="20dp"/>
+
+        <!-- ══ SECTION : MESSAGE ═══════════════════════════════════════════════ -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/recipient_and_message"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.12"
+            android:textColor="@color/smsovh_primary"
+            android:layout_marginBottom="12dp"/>
+
+        <!-- Recipient -->
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilRecipient"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/recipient_hint"
+            app:boxStrokeColor="@color/smsovh_primary"
+            app:hintTextColor="@color/smsovh_on_dark"
+            app:boxBackgroundColor="@color/card_bg"
+            android:layout_marginBottom="14dp">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etRecipient"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="phone"
+                android:textColor="@color/text_primary"
+                android:textSize="15sp"/>
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <!-- Message -->
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilMessage"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/message_hint"
+            app:boxStrokeColor="@color/smsovh_primary"
+            app:hintTextColor="@color/smsovh_on_dark"
+            app:boxBackgroundColor="@color/card_bg"
+            android:layout_marginBottom="6dp">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etMessage"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textMultiLine|textCapSentences"
+                android:minLines="4"
+                android:maxLines="8"
+                android:gravity="top"
+                android:textColor="@color/text_primary"
+                android:textSize="15sp"/>
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <!-- Char Count -->
+        <TextView
+            android:id="@+id/tvCharCount"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/char_count"
+            android:textSize="12sp"
+            android:textColor="@color/smsovh_on_dark"
+            android:layout_gravity="end"
+            android:layout_marginBottom="24dp"/>
+
+        <!-- ══ SEND BUTTON ═════════════════════════════════════════════════════ -->
+        <Button
+            android:id="@+id/btnSend"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="@string/send_sms"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.05"
+            android:backgroundTint="@color/smsovh_primary"
+            android:textColor="@color/white"
+            android:stateListAnimator="@null"
+            style="@style/Widget.MaterialComponents.Button"/>
+
+        <!-- Progress -->
+        <ProgressBar
+            android:id="@+id/progressBar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginTop="12dp"
+            android:indeterminateTint="@color/smsovh_primary"
+            android:visibility="gone"/>
+
+        <!-- ══ STATUS CARD ═════════════════════════════════════════════════════ -->
+        <LinearLayout
+            android:id="@+id/cardStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/bg_status_success"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/tvStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="@color/success"/>
+
+            <TextView
+                android:id="@+id/tvCreditsInfo"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:textColor="@color/smsovh_on_dark"
+                android:layout_marginTop="4dp"
+                android:visibility="gone"/>
+        </LinearLayout>
+
+        <!-- ══ INFO NOTE ═══════════════════════════════════════════════════════ -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:background="@drawable/bg_info"
+            android:padding="14dp"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="ℹ"
+                android:textSize="16sp"
+                android:textColor="@color/smsovh_primary"
+                android:layout_marginEnd="10dp"/>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/info_sender_id"
+                android:textSize="12sp"
+                android:textColor="@color/smsovh_on_dark"
+                android:lineSpacingExtra="3dp"/>
+        </LinearLayout>
+
+        <!-- SÉPARATEUR AVANT API URL ADMIN -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/divider"
+            android:layout_marginBottom="8dp"
+            android:layout_marginTop="8dp"/>
+
+        <!-- ══ API URL ADMIN ══════════════════════════════════════════════════ -->
+        <LinearLayout
+            android:id="@+id/layoutApiUrl"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="@drawable/bg_info"
+            android:padding="12dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="8dp">
+
+            <TextView
+                android:id="@+id/tvApiUrlLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/admin_api_url"
+                android:textSize="13sp"
+                android:textColor="@color/smsovh_primary"
+                android:layout_marginEnd="6dp"/>
+
+            <EditText
+                android:id="@+id/etApiUrl"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:inputType="textUri"
+                android:textColor="@color/text_primary"
+                android:textSize="13sp"
+                android:background="@android:color/transparent"
+                android:singleLine="true"
+                android:ellipsize="end"
+                android:paddingEnd="8dp"/>
+
+            <Button
+                android:id="@+id/btnSaveApiUrl"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="OK"
+                android:textSize="12sp"
+                android:backgroundTint="@color/smsovh_primary"
+                android:textColor="@color/white"
+                style="@style/Widget.MaterialComponents.Button"
+                android:paddingLeft="12dp"
+                android:paddingRight="12dp"/>
+        </LinearLayout>
+
+        <!-- ══ API TOKEN ════════════════════════════════════════════════════════ -->
+        <LinearLayout
+            android:id="@+id/layoutApiToken"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="@drawable/bg_info"
+            android:padding="12dp"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="16dp">
+
+            <TextView
+                android:id="@+id/tvApiTokenLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Token API : "
+                android:textSize="13sp"
+                android:textColor="@color/smsovh_primary"
+                android:layout_marginEnd="6dp"/>
+
+            <TextView
+                android:id="@+id/tvApiToken"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="token"
+                android:textSize="13sp"
+                android:textColor="@color/text_primary"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:paddingEnd="8dp"/>
+
+            <Button
+                android:id="@+id/btnCopyToken"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Copier"
+                android:textSize="12sp"
+                android:backgroundTint="@color/smsovh_primary"
+                android:textColor="@color/white"
+                style="@style/Widget.MaterialComponents.Button"
+                android:paddingLeft="12dp"
+                android:paddingRight="12dp"/>
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>

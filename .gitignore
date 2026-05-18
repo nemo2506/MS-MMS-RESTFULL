@@ -1,0 +1,74 @@
+# IDE / système
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Secrets et configuration locale
+local.properties
+**/local.properties
+**/secrets.properties
+*.keystore
+*.jks
+*.pem
+*.crt
+*.der
+
+# Build / caches / générés
+/build/
+/app/build/
+**/build/
+**/generated/
+**/outputs/
+**/reports/
+.gradle/
+.cxx/
+/app/build/intermediates/
+/app/build/generated/
+
+# Binaires / archives / gros fichiers
+*.apk
+*.ap_*
+*.dex
+*.class
+*.hprof
+*.log
+*.zip
+*.jar
+*.aar
+*.tar.gz
+*.7z
+*.tgz
+*.tar
+*.gz
+*.bin
+*.exe
+*.dll
+*.so
+*.dylib
+*.pdb
+
+# Gradle local / distributions
+/gradle-8.5-bin/
+/gradle-8.5-bin.zip
+/gradle-*/
+**/gradle/wrapper/gradle-wrapper.properties.lock
+
+# Temporaires
+*.tmp
+*.temp
+*.swp
+*.bak
+*~
+
+# Divers
+captures/
+output.json
+crashlytics-build.properties
+/crash_logcat.txt
+/CameraMjpeg/
+
+# Dossiers à exclure du dépôt
+/SOURCE/

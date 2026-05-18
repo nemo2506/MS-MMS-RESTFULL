@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.OvhSms" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/smsovh_primary</item>
+        <item name="colorPrimaryVariant">@color/smsovh_primary_dark</item>
+        <item name="colorOnPrimary">@color/smsovh_on_primary</item>
+        <item name="colorSecondary">@color/smsovh_secondary</item>
+        <item name="colorSecondaryVariant">@color/smsovh_secondary_container</item>
+        <item name="colorOnSecondary">@color/smsovh_on_dark</item>
+        <item name="colorSurface">@color/smsovh_surface</item>
+        <item name="colorOnSurface">@color/smsovh_on_dark</item>
+        <item name="android:colorBackground">@color/smsovh_background</item>
+        <item name="colorOnBackground">@color/smsovh_on_dark</item>
+        <item name="android:statusBarColor">@color/smsovh_background</item>
+        <item name="android:navigationBarColor">@color/smsovh_background</item>
+        <!-- TextInputLayout label color -->
+        <item name="colorControlActivated">@color/smsovh_primary</item>
+    </style>
+</resources>

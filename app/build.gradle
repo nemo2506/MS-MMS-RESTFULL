@@ -1,0 +1,111 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+    id 'kotlin-kapt'
+    id 'com.google.dagger.hilt.android'
+    id 'com.google.devtools.ksp'
+}
+
+def localProps = new Properties()
+def localPropsFile = rootProject.file('local.properties')
+if (localPropsFile.exists()) {
+    localPropsFile.withInputStream { stream ->
+        localProps.load(stream)
+    }
+}
+
+def localOrDefault = { String key, String fallback ->
+    def value = localProps.getProperty(key)
+    return value != null && !value.trim().isEmpty() ? value.trim() : fallback
+}
+
+
+android {
+    namespace 'com.miseservice.smsovh'
+    compileSdk libs.versions.compileSdk.get().toInteger()
+
+    defaultConfig {
+        applicationId "com.miseservice.smsovh"
+        minSdk libs.versions.minSdk.get().toInteger()
+        targetSdk libs.versions.targetSdk.get().toInteger()
+        versionCode 2
+        versionName "1.1.0"
+        buildConfigField 'String', 'BLE_DEVICE_NAME', "\"${localOrDefault('ble.deviceName', 'ESP32_SWITCH')}\""
+        buildConfigField 'String', 'BLE_SERVICE_UUID', "\"${localOrDefault('ble.serviceUuid', '6f1c2a90-3d4e-4c8b-9f12-91a8c3e7d5b1')}\""
+        buildConfigField 'String', 'BLE_CHARACTERISTIC_UUID', "\"${localOrDefault('ble.characteristicUuid', 'a4d91c2e-7b3f-4a6d-9c81-2f5e8b1a9d73')}\""
+        buildConfigField 'String', 'BLE_PIN', "\"${localOrDefault('ble.pin', '2510')}\""
+        buildConfigField 'int', 'BLE_WRITE_TYPE', localOrDefault('ble.writeType', '2')
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+
+    buildFeatures {
+        buildConfig true
+        compose true
+    }
+
+    composeOptions {
+        kotlinCompilerExtensionVersion = libs.versions.composeCompiler.get()
+    }
+
+}
+
+dependencies {
+    implementation libs.core.ktx
+    implementation libs.appcompat
+    implementation libs.nanohttpd
+    implementation libs.material
+    implementation libs.coroutines.android
+    implementation libs.security.crypto
+    implementation libs.lifecycle.viewmodel.ktx
+    implementation libs.activity.ktx
+
+    // Hilt
+    implementation libs.hilt.android
+    kapt libs.hilt.android.compiler
+    kapt libs.hilt.compiler
+    implementation libs.javax.inject
+
+    // Jetpack Compose — BOM gère toutes les versions Compose
+    implementation platform(libs.compose.bom)
+    implementation libs.compose.ui
+    implementation libs.compose.material3
+    implementation libs.compose.material.icons.extended
+    implementation libs.compose.ui.tooling.preview
+    implementation libs.activity.compose
+    implementation libs.lifecycle.runtime.compose
+    debugImplementation libs.compose.ui.tooling
+
+    implementation libs.okhttp
+    implementation libs.android.smsmms
+
+    // Room (base, KTX, compiler)
+    implementation libs.room.runtime
+    implementation libs.room.ktx
+    ksp libs.room.compiler
+
+    // BLE
+    implementation(libs.nordic.ble)
+
+    // Tests
+    testImplementation libs.junit
+    testImplementation libs.mockito.core
+    testImplementation libs.mockito.kotlin
+    testImplementation libs.coroutines.test
+    androidTestImplementation libs.test.ext.junit
+    androidTestImplementation libs.test.espresso
+}
