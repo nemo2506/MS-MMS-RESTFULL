@@ -128,49 +128,62 @@ flowchart LR
 
 ## 📚 Documentation projet
 
-- Audit MVVM + externalisation des textes: `docs/ARCHITECTURE_MVVM_AUDIT.md`
-- Documentation code (KDoc et conventions): `docs/DOCS_CODE.md`
-- Manuel achat/integration MOS + ESP32 + flash Arduino IDE: `docs/MANUEL_ACHAT_INTEGRATION_MOS_ESP32.md`
+- Documentation code (KDoc et conventions) : `docs/DOCS_CODE.md`
+- Manuel achat / integration MOS + ESP32 + flash Arduino IDE : `docs/MANUEL_ACHAT_INTEGRATION_MOS_ESP32.md`
+- Exemples Python pour l'API REST SMS / MMS : `docs/API_PYTHON_SMS_EXAMPLES.md`
+- Historique des corrections MVVM : `CHANGELOG_MVVM_FIX.md`
 
 ---
 
 ## 📁 Structure du projet
 
-```
-app/
-├── src/
-│   ├── main/
-│   │   ├── AndroidManifest.xml
-│   │   ├── java/com/miseservice/smsovh/
-│   │   │   ├── SmsOvhApp.kt               ← Application + bootstrap global
-│   │   │   ├── di/                        ← Modules Hilt (bind/provide)
-│   │   │   ├── data/
-│   │   │   │   ├── datasource/            ← Sources techniques
-│   │   │   │   ├── repository/            ← Implémentations Repository
-│   │   │   │   └── local/                 ← Room (DB, DAO, Entity)
-│   │   │   ├── domain/
-│   │   │   │   ├── repository/            ← Contrats métier
-│   │   │   │   └── usecase/               ← Cas d’usage (orchestration)
-│   │   │   ├── service/                   ← Foreground service + serveur REST local
-│   │   │   ├── util/                      ← Helpers (SMS, token, réseau, permissions)
-│   │   │   ├── viewmodel/                 ← MainViewModel + UI state
-│   │   │   ├── ui/
-│   │   │   │   ├── MainActivity.kt
-│   │   │   │   ├── MainScreen.kt          ← UI Jetpack Compose
-│   │   │   │   ├── components/            ← Sections composables
-│   │   │   │   └── theme/                 ← Couleurs/typo/thèmes light/dark
-│   │   │   └── model/                     ← Modèles partagés
-│   │   └── res/                           ← Ressources Android (values, mipmap, xml...)
-│   ├── test/java/com/miseservice/smsovh/  ← Tests unitaires (service, viewmodel, util)
-│   └── androidTest/java/com/miseservice/smsovh/
-│       ├── ApiCircuitTest.kt              ← Tests instrumentés API locale
-│       └── LocalSmsCircuitTest.kt         ← Tests instrumentés envoi local
-├── build.gradle
+```text
+MS-OVH-SMS/
+├── app/
+│   ├── src/
+│   │   ├── main/
+│   │   │   ├── AndroidManifest.xml
+│   │   │   ├── java/com/miseservice/smsovh/
+│   │   │   │   ├── SmsOvhApp.kt               ← Application Android + bootstrap global
+│   │   │   │   ├── data/
+│   │   │   │   │   ├── ble/                   ← Integration Bluetooth / GATT / ESP32
+│   │   │   │   │   ├── datasource/            ← Sources techniques et acces plateforme
+│   │   │   │   │   ├── local/                 ← Room (DB, DAO, Entity)
+│   │   │   │   │   ├── remote/                ← API OVH / appels HTTP / acces distant
+│   │   │   │   │   └── repository/            ← Implementations Repository
+│   │   │   │   ├── di/                        ← Modules Hilt (bind/provide)
+│   │   │   │   ├── domain/
+│   │   │   │   │   ├── repository/            ← Contrats metier
+│   │   │   │   │   └── usecase/               ← Cas d'usage applicatifs
+│   │   │   │   ├── model/                     ← Modeles partages
+│   │   │   │   ├── service/                   ← Foreground service + serveur REST local
+│   │   │   │   ├── ui/
+│   │   │   │   │   ├── MainActivity.kt
+│   │   │   │   │   ├── MainScreen.kt
+│   │   │   │   │   ├── components/            ← Sections Compose reutilisables
+│   │   │   │   │   └── theme/                 ← Couleurs, typo, themes light/dark
+│   │   │   │   ├── util/                      ← Helpers (SMS, token, reseau, permissions)
+│   │   │   │   └── viewmodel/                 ← MainViewModel + etat UI
+│   │   │   └── res/                           ← Ressources Android (values, mipmap, xml...)
+│   │   ├── test/java/com/miseservice/smsovh/
+│   │   │   ├── data/                          ← Tests unitaires couche data
+│   │   │   ├── service/                       ← Tests unitaires services
+│   │   │   ├── util/                          ← Tests utilitaires
+│   │   │   └── viewmodel/                     ← Tests ViewModel
+│   │   └── androidTest/java/com/miseservice/smsovh/
+│   │       ├── ApiCircuitTest.kt              ← Tests instrumentes API locale
+│   │       └── LocalSmsCircuitTest.kt         ← Tests instrumentes envoi local
+│   └── build.gradle
 ├── docs/
-│   ├── ARCHITECTURE_MVVM_AUDIT.md
+│   ├── API_PYTHON_SMS_EXAMPLES.md
 │   ├── DOCS_CODE.md
 │   └── MANUEL_ACHAT_INTEGRATION_MOS_ESP32.md
-└── ...
+├── screenShots/                               ← Captures d'ecran utilisees dans le README
+├── CHANGELOG_MVVM_FIX.md                      ← Historique des corrections MVVM
+├── build.gradle
+├── settings.gradle
+├── gradle.properties
+└── README.md
 ```
 
 ---
@@ -181,6 +194,45 @@ app/
 # Cloner le projet
 # Ouvrir dans Android Studio
 # Sync Gradle puis Run sur un appareil réel ou un émulateur
+```
+
+## 🔵 Configuration BLE locale (`local.properties`)
+
+Certaines valeurs BLE utilisees pour la connexion au module ESP32 sont definies localement dans `local.properties`.
+
+> ⚠️ Ne jamais versionner de secrets ou d'identifiants materiels reels dans Git.
+> Le fichier `local.properties` doit rester local a la machine de developpement.
+
+### Exemple documente (obfusque)
+
+```ini
+# BLE local parameters
+ble.deviceName=ESP32_S*****
+ble.serviceUuid=6f1c2a90-****-****-****-********d5b1
+ble.characteristicUuid=a4d91c2e-****-****-****-********9d73
+ble.pin=****
+# BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT = 2
+ble.writeType=2
+```
+
+### Signification des parametres
+
+- `ble.deviceName` : nom Bluetooth annonce par le module ESP32
+- `ble.serviceUuid` : UUID du service GATT expose par le module
+- `ble.characteristicUuid` : UUID de la caracteristique utilisee pour lire / ecrire
+- `ble.pin` : code local de securisation / appairage selon votre implementation
+- `ble.writeType` : type d'ecriture GATT (`2` = `WRITE_TYPE_DEFAULT`)
+
+### Exemple attendu cote developpeur
+
+```ini
+# BLE local parameters
+ble.deviceName=<BLE_DEVICE_NAME>
+ble.serviceUuid=<BLE_SERVICE_UUID>
+ble.characteristicUuid=<BLE_CHARACTERISTIC_UUID>
+ble.pin=<BLE_PIN>
+# BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT = 2
+ble.writeType=2
 ```
 
 ---
@@ -288,21 +340,9 @@ Réponse dédiée `/api/battery` (`200`):
   - Il est recommandé de compresser/redimensionner l’image avant l’envoi.
   - La taille maximale acceptée peut varier selon le pays et l’opérateur, mais ne jamais dépasser 600 Ko pour une compatibilité maximale.
 
-Exemple Python:
+Exemple Python :
 
-```python
-import base64
-
-with open("image.jpg", "rb") as f:
-    base64_jpeg = base64.b64encode(f.read()).decode("utf-8")
-
-payload = {
-    "senderId": "MYBRAND",
-    "recipient": "+33612345678",
-    "text": "MMS test",
-    "base64Jpeg": base64_jpeg
-}
-```
+Voir la documentation dediee : `docs/API_PYTHON_SMS_EXAMPLES.md`
 
 Exemple PHP:
 
@@ -321,7 +361,7 @@ $payload = [
 
 Exemple Android (Kotlin):
 
-```kotlin
+```text
 import android.util.Base64
 import java.io.File
 
@@ -362,4 +402,15 @@ Pour toute question ou contribution, ouvrez une issue ou une pull request.
 
 ---
 
-> © 2026 MISESERVICE — Architecture MVVM, sécurité, confidentialité et bonnes pratiques Android.
+## 🗂️ Nomenclature des documents
+
+| Document | Emplacement | Rôle |
+|---|---|---|
+| Documentation code | `docs/DOCS_CODE.md` | Conventions KDoc, zones sensibles et principes de documentation du code |
+| Manuel MOS + ESP32 | `docs/MANUEL_ACHAT_INTEGRATION_MOS_ESP32.md` | Achat, cablage, flash Arduino IDE, BLE, relais et integration ESP32 |
+| Exemples Python API REST | `docs/API_PYTHON_SMS_EXAMPLES.md` | Guide de configuration Python pour consommer l'API REST SMS / MMS |
+| Historique MVVM | `CHANGELOG_MVVM_FIX.md` | Trace des corrections et ajustements lies a l'architecture et au ViewModel |
+
+---
+
+> © 2026 MISESERVICE — Architecture MVVM, sécurité, bonnes pratiques Android.

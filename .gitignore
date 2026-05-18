@@ -68,7 +68,3 @@ captures/
 output.json
 crashlytics-build.properties
 /crash_logcat.txt
-/CameraMjpeg/
-
-# Dossiers à exclure du dépôt
-/SOURCE/
