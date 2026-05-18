@@ -142,8 +142,8 @@ MS-OVH-SMS/
 │   ├── src/
 │   │   ├── main/
 │   │   │   ├── AndroidManifest.xml
-│   │   │   ├── java/com/miseservice/smsovh/
-│   │   │   │   ├── SmsOvhApp.kt               ← Application Android + bootstrap global
+│   │   │   ├── java/com/miseservice/msmms/
+│   │   │   │   ├── MsMmsApp.kt                ← Application Android + bootstrap global
 │   │   │   │   ├── data/
 │   │   │   │   │   ├── ble/                   ← Integration Bluetooth / GATT / ESP32
 │   │   │   │   │   ├── datasource/            ← Sources techniques et acces plateforme
@@ -164,12 +164,12 @@ MS-OVH-SMS/
 │   │   │   │   ├── util/                      ← Helpers (SMS, token, reseau, permissions)
 │   │   │   │   └── viewmodel/                 ← MainViewModel + etat UI
 │   │   │   └── res/                           ← Ressources Android (values, mipmap, xml...)
-│   │   ├── test/java/com/miseservice/smsovh/
+│   │   ├── test/java/com/miseservice/msmms/
 │   │   │   ├── data/                          ← Tests unitaires couche data
 │   │   │   ├── service/                       ← Tests unitaires services
 │   │   │   ├── util/                          ← Tests utilitaires
 │   │   │   └── viewmodel/                     ← Tests ViewModel
-│   │   └── androidTest/java/com/miseservice/smsovh/
+│   │   └── androidTest/java/com/miseservice/msmms/
 │   │       ├── ApiCircuitTest.kt              ← Tests instrumentes API locale
 │   │       └── LocalSmsCircuitTest.kt         ← Tests instrumentes envoi local
 │   └── build.gradle

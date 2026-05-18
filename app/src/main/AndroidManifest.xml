@@ -11,7 +11,7 @@
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
-    <uses-permission android:name="com.miseservice.smsovh.SEND_SMS_PERMISSION" />
+    <uses-permission android:name="com.miseservice.msmms.SEND_SMS_PERMISSION" />
 
     <!-- Permissions Bluetooth -->
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
@@ -24,11 +24,11 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
     <permission
-        android:name="com.miseservice.smsovh.SEND_SMS_PERMISSION"
+        android:name="com.miseservice.msmms.SEND_SMS_PERMISSION"
         android:protectionLevel="signature" />
 
     <application
-        android:name=".SmsOvhApp"
+        android:name=".MsMmsApp"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"

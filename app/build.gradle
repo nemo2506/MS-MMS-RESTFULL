@@ -21,11 +21,11 @@ def localOrDefault = { String key, String fallback ->
 
 
 android {
-    namespace 'com.miseservice.smsovh'
+    namespace 'com.miseservice.msmms'
     compileSdk libs.versions.compileSdk.get().toInteger()
 
     defaultConfig {
-        applicationId "com.miseservice.smsovh"
+        applicationId "com.miseservice.msmms"
         minSdk libs.versions.minSdk.get().toInteger()
         targetSdk libs.versions.targetSdk.get().toInteger()
         versionCode 2
