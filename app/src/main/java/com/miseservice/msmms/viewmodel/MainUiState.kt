@@ -56,7 +56,10 @@ data class MainUiState(
     val bleErrorMessage: String? = null,
     val bleRelayLoading: Boolean = false,
     val bleWifiLoading: Boolean = false,
-    val switchCommandStatusMessage: String? = null
+    val switchCommandStatusMessage: String? = null,
+    val smsDeniedDialogMode: SmsDeniedDialogMode = SmsDeniedDialogMode.NONE,
+    val smsDeniedForSendAction: Boolean = false,
+    val batteryOptimizationDialogVisible: Boolean = false
 ) {
     val canSendLocalSms: Boolean
         get() = serviceActive && !isLoading && recipient.isNotBlank() && message.isNotBlank()
@@ -75,3 +78,8 @@ data class MainUiState(
 enum class FeedbackType {
     NONE, SUCCESS, ERROR
 }
+
+enum class SmsDeniedDialogMode {
+    NONE, RATIONALE, PERMANENTLY_DENIED
+}
+

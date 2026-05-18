@@ -10,13 +10,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,6 +27,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.miseservice.msmms.R
+import com.miseservice.msmms.ui.components.dialogs.PermissionActionDialog
 import com.miseservice.msmms.viewmodel.MainUiState
 import java.util.Locale
 
@@ -50,28 +46,19 @@ fun ApiNetworkSection(
     var showResetTokenDialog by rememberSaveable { mutableStateOf(false) }
 
     if (showResetTokenDialog) {
-        AlertDialog(
-            onDismissRequest = { showResetTokenDialog = false },
-            title = { Text(text = stringResource(R.string.reset_token_dialog_title)) },
-            text = { Text(text = stringResource(R.string.reset_token_dialog_message)) },
-            confirmButton = {
-                Button(onClick = {
-                    showResetTokenDialog = false
-                    onResetToken()
-                }) {
-                    Text(text = stringResource(R.string.reset_token_dialog_confirm))
-                }
+        PermissionActionDialog(
+            title = stringResource(R.string.reset_token_dialog_title),
+            message = stringResource(R.string.reset_token_dialog_message),
+            confirmLabel = stringResource(R.string.reset_token_dialog_confirm),
+            onConfirm = {
+                showResetTokenDialog = false
+                onResetToken()
             },
-            dismissButton = {
-                TextButton(onClick = { showResetTokenDialog = false }) {
-                    Text(text = stringResource(R.string.cancel))
-                }
-            }
+            dismissLabel = stringResource(R.string.cancel),
+            onDismiss = { showResetTokenDialog = false }
         )
     }
 
-    HorizontalDivider(color = MaterialTheme.colorScheme.outline, thickness = 1.dp)
-    Spacer(Modifier.height(12.dp))
     Text(
         text = stringResource(R.string.api_network_info_title),
         fontSize = 16.5.sp,
@@ -164,6 +151,13 @@ fun ApiNetworkSection(
         }
     }
 
+    Spacer(Modifier.height(10.dp))
+    Text(
+        text = stringResource(R.string.api_token_section_title),
+        color = colorResource(id = R.color.smsovh_primary),
+        fontWeight = FontWeight.Bold,
+        fontSize = 15.sp
+    )
     Spacer(Modifier.height(10.dp))
     CopyableReadOnlyField(
         value = token,

@@ -35,7 +35,8 @@
     <string name="api_network_info_title">INFORMATIONS API &amp; RÉSEAU</string>
     <string name="network_not_connected">Non connectée</string>
     <string name="connected_ip_label">IP connectée</string>
-    <string name="api_endpoints_title">Endpoints API</string>
+    <string name="api_endpoints_title">ENDPOINTS API</string>
+    <string name="api_token_section_title">SÉCURITÉ</string>
     <string name="endpoint_send_label">POST /api/send-message</string>
     <string name="endpoint_logs_label">POST /api/logs</string>
     <string name="endpoint_battery_label">GET /api/battery</string>
@@ -150,7 +151,7 @@
     <string name="ovh_sms_sent_success">✅ SMS envoyé avec succès.</string>
     <string name="ovh_invalid_recipient">Numéro destinataire invalide.</string>
 
-    <string name="ovh_credentials_title">Identifiants</string>
+    <string name="ovh_credentials_title">IDENTIFIANTS</string>
     <string name="ovh_app_key_label">Application Key</string>
     <string name="ovh_app_secret_label">Application Secret</string>
     <string name="ovh_consumer_key_label">Consumer Key</string>
@@ -160,15 +161,16 @@
     <string name="ovh_country_prefix_label">Préfixe pays (recipient)</string>
     <string name="ovh_credentials_help_text">Clés : api.ovh.com/createToken - droit POST sms jobs</string>
 
-    <string name="bluetooth_section_title">Power Switch Bluetooth</string>
+    <string name="bluetooth_section_title">POWER SWITCH BLUETOOTH</string>
     <string name="bluetooth_status_connected">Connecté</string>
     <string name="bluetooth_status_disconnected">Déconnecté</string>
     <string name="bluetooth_status_connecting">Connexion en cours…</string>
-    <string name="bluetooth_action_connect">Connect</string>
-    <string name="bluetooth_action_disconnect">Disconnect</string>
-    <string name="bluetooth_relay_label">⚡ Relais</string>
+    <string name="bluetooth_action_connect">CONNECT</string>
+    <string name="bluetooth_action_disconnect">DISCONNECT</string>
+    <string name="bluetooth_relay_label">⚡ Charge</string>
 
-    <string name="bluetooth_wifi_label">📶 WIFI</string>
+    <string name="bluetooth_wifi_label">📶 Wifi</string>
+    <string name="bluetooth_battery_charge_title">CHARGE</string>
     <string name="bluetooth_battery_min_label">Min</string>
     <string name="bluetooth_battery_max_label">Max</string>
     <string name="bluetooth_error_invalid_pin">❌ PIN Bluetooth incorrect.</string>
@@ -184,6 +186,9 @@
     <string name="bluetooth_pin_dialog_cancel">Annuler</string>
 
     <string name="bluetooth_permission_denied_banner">❌ Permission Bluetooth refusée. Activez BLUETOOTH_SCAN et BLUETOOTH_CONNECT dans les paramètres.</string>
+    <string name="bluetooth_permission_required_title">Permission Bluetooth requise</string>
+    <string name="bluetooth_permission_required_message">L\'application a besoin des permissions BLUETOOTH_SCAN et BLUETOOTH_CONNECT pour piloter les commandes Power.</string>
+    <string name="bluetooth_permission_denied_message">La permission Bluetooth est refusée. Vous pouvez l\'activer depuis les paramètres.</string>
 
     <!-- BLE Connection Status -->
     <string name="ble_status_idle">Inactif</string>

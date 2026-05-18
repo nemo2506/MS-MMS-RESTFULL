@@ -30,10 +30,11 @@ import com.miseservice.msmms.viewmodel.MainUiState
 @Composable
 fun ServiceStatusRow(
     uiState: MainUiState,
-    onCheckedChange: (Boolean) -> Unit
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.End
     ) {
         Surface(
@@ -103,4 +104,3 @@ fun ServiceStatusRow(
         )
     }
 }
-

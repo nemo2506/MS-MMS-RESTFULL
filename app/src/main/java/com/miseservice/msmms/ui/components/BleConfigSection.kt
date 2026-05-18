@@ -59,6 +59,7 @@ fun BleConfigSection(
     onWifiSwitchChange: (Boolean) -> Unit = {}
 ) {
     val labelSize = 15.sp
+    val titleSize = 16.5.sp
     val sectionSpacing = 14.dp
     val rowMinHeight = 52.dp
     val connected = isConnected
@@ -90,7 +91,7 @@ fun BleConfigSection(
         Spacer(Modifier.width(8.dp))
         Text(
             text = stringResource(R.string.bluetooth_section_title),
-            fontSize = 16.5.sp,
+            fontSize = titleSize,
             color = colorResource(id = R.color.smsovh_primary),
             fontWeight = FontWeight.Bold
         )
@@ -243,6 +244,14 @@ fun BleConfigSection(
     }
 
     Spacer(Modifier.height(sectionSpacing))
+
+    Text(
+        text = stringResource(R.string.bluetooth_battery_charge_title),
+        color = colorResource(id = R.color.smsovh_primary),
+        fontWeight = FontWeight.Bold,
+        fontSize = titleSize
+    )
+    Spacer(Modifier.height(12.dp))
 
      Row(
          modifier = Modifier.fillMaxWidth(),

@@ -35,7 +35,8 @@
     <string name="api_network_info_title">API &amp; NETWORK INFORMATION</string>
     <string name="network_not_connected">Not connected</string>
     <string name="connected_ip_label">Connected IP</string>
-    <string name="api_endpoints_title">API Endpoints</string>
+    <string name="api_endpoints_title">API ENDPOINTS</string>
+    <string name="api_token_section_title">SECURITY</string>
     <string name="endpoint_send_label">POST /api/send-message</string>
     <string name="endpoint_logs_label">POST /api/logs</string>
     <string name="endpoint_battery_label">GET /api/battery</string>
@@ -161,15 +162,16 @@
     <string name="ovh_country_prefix_label">Country prefix (recipient)</string>
     <string name="ovh_credentials_help_text">Keys: api.ovh.com/createToken - right POST sms jobs</string>
 
-    <string name="bluetooth_section_title">Power Switch Bluetooth</string>
+    <string name="bluetooth_section_title">POWER SWITCH BLUETOOTH</string>
     <string name="bluetooth_status_connected">Connected</string>
     <string name="bluetooth_status_disconnected">Disconnected</string>
     <string name="bluetooth_status_connecting">Connecting…</string>
-    <string name="bluetooth_action_connect">Connect</string>
-    <string name="bluetooth_action_disconnect">Disconnect</string>
-    <string name="bluetooth_relay_label">⚡ Relay</string>
+    <string name="bluetooth_action_connect">CONNECT</string>
+    <string name="bluetooth_action_disconnect">DISCONNECT</string>
+    <string name="bluetooth_relay_label">⚡ Charge</string>
 
-    <string name="bluetooth_wifi_label">📶 Wifi</string>
+    <string name="bluetooth_wifi_label">📶 WIFI</string>
+    <string name="bluetooth_battery_charge_title">CHARGE</string>
     <string name="bluetooth_battery_min_label">Min</string>
     <string name="bluetooth_battery_max_label">Max</string>
     <string name="bluetooth_error_invalid_pin">❌ Invalid Bluetooth PIN.</string>
@@ -185,6 +187,9 @@
     <string name="bluetooth_pin_dialog_cancel">Cancel</string>
 
     <string name="bluetooth_permission_denied_banner">❌ Bluetooth permission denied. Enable BLUETOOTH_SCAN and BLUETOOTH_CONNECT in settings.</string>
+    <string name="bluetooth_permission_required_title">Bluetooth permission required</string>
+    <string name="bluetooth_permission_required_message">The app needs BLUETOOTH_SCAN and BLUETOOTH_CONNECT permissions to control Power commands.</string>
+    <string name="bluetooth_permission_denied_message">Bluetooth permission was denied. You can enable it from settings.</string>
 
     <!-- BLE Connection Status -->
     <string name="ble_status_idle">Idle</string>

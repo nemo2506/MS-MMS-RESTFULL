@@ -5,13 +5,13 @@ import androidx.compose.ui.res.stringResource
 import com.miseservice.msmms.R
 
 @Composable
-fun LocationPermissionRequiredDialog(
+fun BluetoothPermissionRequiredDialog(
     onAllow: () -> Unit,
     onOpenSettings: () -> Unit
 ) {
     PermissionActionDialog(
-        title = stringResource(R.string.location_permission_required_title),
-        message = stringResource(R.string.location_permission_required_message),
+        title = stringResource(R.string.bluetooth_permission_required_title),
+        message = stringResource(R.string.bluetooth_permission_required_message),
         confirmLabel = stringResource(R.string.allow),
         onConfirm = onAllow,
         dismissLabel = stringResource(R.string.settings),

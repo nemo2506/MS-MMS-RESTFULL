@@ -3,7 +3,6 @@ package com.miseservice.msmms.ui
 import android.content.Intent
 import android.os.Bundle
 import android.provider.Settings
-import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.viewModels
 import androidx.activity.compose.setContent
@@ -11,12 +10,12 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import com.miseservice.msmms.R
 import com.miseservice.msmms.viewmodel.MainViewModel
+import com.miseservice.msmms.viewmodel.SmsDeniedDialogMode
 import com.miseservice.msmms.ui.theme.SmsOvhTheme
 import dagger.hilt.android.AndroidEntryPoint
 import androidx.core.net.toUri
 import android.Manifest
 import androidx.activity.result.contract.ActivityResultContracts
-import android.app.AlertDialog
 import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
 import com.miseservice.msmms.util.BatteryOptimizationHelper
@@ -49,15 +48,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun maybeRequestBatteryOptimizationExemption() {
-        val intent = BatteryOptimizationHelper.buildIgnoreBatteryOptimizationIntent(this) ?: return
-        AlertDialog.Builder(this)
-            .setTitle(getString(R.string.battery_optimization_title))
-            .setMessage(getString(R.string.battery_optimization_message))
-            .setPositiveButton(getString(R.string.allow)) { _, _ ->
-                requestIgnoreBatteryOptimization.launch(intent)
-            }
-            .setNegativeButton(getString(R.string.cancel), null)
-            .show()
+        BatteryOptimizationHelper.buildIgnoreBatteryOptimizationIntent(this) ?: return
+        viewModel.showBatteryOptimizationDialog()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -69,7 +61,7 @@ class MainActivity : AppCompatActivity() {
         ) {
             val granted = BatteryOptimizationHelper.isIgnoringBatteryOptimizations(this)
             if (granted) {
-                Toast.makeText(this, getString(R.string.battery_optimization_disabled_success), Toast.LENGTH_SHORT).show()
+                android.widget.Toast.makeText(this, getString(R.string.battery_optimization_disabled_success), android.widget.Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -80,23 +72,15 @@ class MainActivity : AppCompatActivity() {
                 }
                 pendingSendSmsAfterPermission = false
             } else {
-                if (!androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(
+                val shouldSendAfterPermission = pendingSendSmsAfterPermission
+                val permanentlyDenied = !androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(
                         this,
                         Manifest.permission.SEND_SMS
                     )
-                ) {
-                    AlertDialog.Builder(this)
-                        .setTitle(getString(R.string.permission_required_title))
-                        .setMessage(getString(R.string.permission_denied_permanently_message))
-                        .setPositiveButton(getString(R.string.settings)) { _, _ -> openAppSettings() }
-                        .setNegativeButton(getString(R.string.cancel), null)
-                        .show()
+                if (permanentlyDenied) {
+                    viewModel.showSmsDeniedDialog(SmsDeniedDialogMode.PERMANENTLY_DENIED, shouldSendAfterPermission)
                 } else {
-                    Toast.makeText(
-                        this,
-                        getString(R.string.permission_denied_message),
-                        Toast.LENGTH_LONG
-                    ).show()
+                    viewModel.showSmsDeniedDialog(SmsDeniedDialogMode.RATIONALE, shouldSendAfterPermission)
                 }
                 pendingSendSmsAfterPermission = false
             }
@@ -107,7 +91,17 @@ class MainActivity : AppCompatActivity() {
                     viewModel = viewModel,
                     hasSendSmsPermission = { hasAllSmsPermissions() },
                     onRequestSmsPermission = { launchSmsPermissionRequest(true) },
-                    onSendSmsRequested = { viewModel.sendSms() }
+                    onSendSmsRequested = { viewModel.sendSms() },
+                    onSmsRationaleAllow = { forSendAction ->
+                        viewModel.dismissSmsDeniedDialog()
+                        launchSmsPermissionRequest(forSendAction)
+                    },
+                    onOpenAppSettings = { openAppSettings() },
+                    onRequestBatteryOptimization = {
+                        viewModel.dismissBatteryOptimizationDialog()
+                        BatteryOptimizationHelper.buildIgnoreBatteryOptimizationIntent(this)
+                            ?.let { requestIgnoreBatteryOptimization.launch(it) }
+                    }
                 )
             }
         }

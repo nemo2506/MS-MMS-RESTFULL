@@ -200,7 +200,7 @@ Certaines valeurs BLE utilisees pour la connexion au module ESP32 sont definies 
 > ⚠️ Ne jamais versionner de secrets ou d'identifiants materiels reels dans Git.
 > Le fichier `local.properties` doit rester local a la machine de developpement.
 
-### Exemple documente (obfusque)
+### Exemple documente
 
 ```ini
 # BLE local parameters

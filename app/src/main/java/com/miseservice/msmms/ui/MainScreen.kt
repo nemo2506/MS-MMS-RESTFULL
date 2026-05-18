@@ -13,7 +13,6 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -23,6 +22,7 @@ import androidx.compose.material.icons.outlined.AddCircle
 import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material.icons.outlined.PowerSettingsNew
 import androidx.compose.material.icons.outlined.SettingsEthernet
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -55,9 +55,17 @@ import com.miseservice.msmms.ui.components.smsOvhButtonColors
 import com.miseservice.msmms.ui.components.smsOvhTextFieldColors
 import com.miseservice.msmms.ui.components.dialogs.LocationPermissionDeniedDialog
 import com.miseservice.msmms.ui.components.dialogs.LocationPermissionRequiredDialog
+import com.miseservice.msmms.ui.components.dialogs.BluetoothPermissionDeniedDialog
+import com.miseservice.msmms.ui.components.dialogs.BluetoothPermissionRequiredDialog
+import com.miseservice.msmms.ui.components.dialogs.PermissionActionDialog
+import com.miseservice.msmms.ui.components.dialogs.SmsPermissionDialog
 import com.miseservice.msmms.util.NetworkInfoProvider
 import com.miseservice.msmms.viewmodel.FeedbackType
 import com.miseservice.msmms.viewmodel.MainViewModel
+import com.miseservice.msmms.viewmodel.SmsDeniedDialogMode
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.foundation.shape.RoundedCornerShape
 import kotlinx.coroutines.delay
 
 private data class MainTabItem(
@@ -66,12 +74,16 @@ private data class MainTabItem(
     val contentDescription: String
 )
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
     viewModel: MainViewModel,
     hasSendSmsPermission: () -> Boolean,
     onRequestSmsPermission: () -> Unit,
-    onSendSmsRequested: () -> Unit
+    onSendSmsRequested: () -> Unit,
+    onSmsRationaleAllow: (forSendAction: Boolean) -> Unit = {},
+    onOpenAppSettings: () -> Unit = {},
+    onRequestBatteryOptimization: () -> Unit = {}
 ) {
     fun withStatusPrefix(message: String, type: FeedbackType): String {
         val trimmed = message.trim()
@@ -86,9 +98,17 @@ fun MainScreen(
     val focusManager = LocalFocusManager.current
     val uiState = viewModel.uiState.collectAsState().value
     val showLocationDeniedDialog = remember { mutableStateOf(false) }
+    val showBluetoothDeniedDialog = remember { mutableStateOf(false) }
     val currentContext = rememberUpdatedState(LocalContext.current)
     var showBlePinDialog by rememberSaveable { mutableStateOf(false) }
     var blePinInput by rememberSaveable { mutableStateOf("") }
+    var showStartupSmsPrePrompt by rememberSaveable { mutableStateOf(false) }
+    var showStartupLocationPrePrompt by rememberSaveable { mutableStateOf(false) }
+    var showStartupBluetoothPrePrompt by rememberSaveable { mutableStateOf(false) }
+    var pendingStartupSms by rememberSaveable { mutableStateOf(false) }
+    var pendingStartupLocation by rememberSaveable { mutableStateOf(false) }
+    var pendingStartupBluetooth by rememberSaveable { mutableStateOf(false) }
+    val startupApprovedPermissions = remember { mutableStateListOf<String>() }
 
     val copyToClipboard: (String, String) -> Unit = remember {
         { label, value ->
@@ -167,15 +187,48 @@ fun MainScreen(
         true
     }
     var showLocationDialog by rememberSaveable { mutableStateOf(false) }
+    var showBluetoothDialog by rememberSaveable { mutableStateOf(false) }
+
+    val bluetoothPermissions = remember {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            arrayOf(Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT)
+        } else {
+            emptyArray()
+        }
+    }
 
     val startupPermissionsLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         val locationGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true
         viewModel.setLocationPermissionGranted(locationGranted)
-        showLocationDialog = false
-        if (!locationGranted) {
-            showLocationDeniedDialog.value = true
+        if (locationGranted) {
+            showLocationDialog = false
+            showLocationDeniedDialog.value = false
+        } else {
+            val shouldShowRationale = activity?.let {
+                ActivityCompat.shouldShowRequestPermissionRationale(it, Manifest.permission.ACCESS_FINE_LOCATION)
+            } == true
+            showLocationDialog = shouldShowRationale
+            showLocationDeniedDialog.value = !shouldShowRationale
+        }
+
+        val bluetoothNowGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            permissions[Manifest.permission.BLUETOOTH_SCAN] == true &&
+                permissions[Manifest.permission.BLUETOOTH_CONNECT] == true
+        } else {
+            true
+        }
+        if (bluetoothNowGranted) {
+            showBluetoothDialog = false
+            showBluetoothDeniedDialog.value = false
+        } else {
+            val shouldShowBluetoothRationale = activity?.let {
+                ActivityCompat.shouldShowRequestPermissionRationale(it, Manifest.permission.BLUETOOTH_SCAN) ||
+                    ActivityCompat.shouldShowRequestPermissionRationale(it, Manifest.permission.BLUETOOTH_CONNECT)
+            } == true
+            showBluetoothDialog = shouldShowBluetoothRationale
+            showBluetoothDeniedDialog.value = !shouldShowBluetoothRationale
         }
     }
 
@@ -183,11 +236,56 @@ fun MainScreen(
         contract = ActivityResultContracts.RequestPermission()
     ) { granted ->
         viewModel.setLocationPermissionGranted(granted)
-        showLocationDialog = false
-        if (!granted) {
-            showLocationDeniedDialog.value = true
+        if (granted) {
+            showLocationDialog = false
+            showLocationDeniedDialog.value = false
+        } else {
+            val shouldShowRationale = activity?.let {
+                ActivityCompat.shouldShowRequestPermissionRationale(it, Manifest.permission.ACCESS_FINE_LOCATION)
+            } == true
+            showLocationDialog = shouldShowRationale
+            showLocationDeniedDialog.value = !shouldShowRationale
         }
     }
+
+    val bluetoothPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val granted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            permissions[Manifest.permission.BLUETOOTH_SCAN] == true &&
+                permissions[Manifest.permission.BLUETOOTH_CONNECT] == true
+        } else {
+            true
+        }
+        if (granted) {
+            showBluetoothDialog = false
+            showBluetoothDeniedDialog.value = false
+        } else {
+            val shouldShowRationale = activity?.let {
+                ActivityCompat.shouldShowRequestPermissionRationale(it, Manifest.permission.BLUETOOTH_SCAN) ||
+                    ActivityCompat.shouldShowRequestPermissionRationale(it, Manifest.permission.BLUETOOTH_CONNECT)
+            } == true
+            showBluetoothDialog = shouldShowRationale
+            showBluetoothDeniedDialog.value = !shouldShowRationale
+        }
+    }
+
+    val proceedStartupPrePrompt: () -> Unit = {
+        showStartupSmsPrePrompt = false
+        showStartupLocationPrePrompt = false
+        showStartupBluetoothPrePrompt = false
+
+        when {
+            pendingStartupSms -> showStartupSmsPrePrompt = true
+            pendingStartupLocation -> showStartupLocationPrePrompt = true
+            pendingStartupBluetooth -> showStartupBluetoothPrePrompt = true
+            startupApprovedPermissions.isNotEmpty() -> {
+                startupPermissionsLauncher.launch(startupApprovedPermissions.toTypedArray())
+                startupApprovedPermissions.clear()
+            }
+        }
+    }
+
     LaunchedEffect(Unit) {
         val locationGranted = ContextCompat.checkSelfPermission(
             context,
@@ -197,19 +295,81 @@ fun MainScreen(
 
         viewModel.setLocationPermissionGranted(locationGranted)
         showLocationDialog = false
+        showBluetoothDialog = false
+        showLocationDeniedDialog.value = false
+        showBluetoothDeniedDialog.value = false
+        startupApprovedPermissions.clear()
 
-        val startupPermissions = mutableListOf(
-            Manifest.permission.SEND_SMS,
-            Manifest.permission.ACCESS_FINE_LOCATION
+        pendingStartupSms = !smsGranted
+        pendingStartupLocation = !locationGranted
+        pendingStartupBluetooth = !bluetoothGranted
+        proceedStartupPrePrompt()
+    }
+
+    if (showStartupSmsPrePrompt) {
+        SmsPermissionDialog(
+            onConfirm = {
+                showStartupSmsPrePrompt = false
+                pendingStartupSms = false
+                if (!startupApprovedPermissions.contains(Manifest.permission.SEND_SMS)) {
+                    startupApprovedPermissions += Manifest.permission.SEND_SMS
+                }
+                proceedStartupPrePrompt()
+            },
+            onDismiss = {
+                showStartupSmsPrePrompt = false
+                pendingStartupSms = false
+                proceedStartupPrePrompt()
+            }
         )
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            startupPermissions += Manifest.permission.BLUETOOTH_SCAN
-            startupPermissions += Manifest.permission.BLUETOOTH_CONNECT
-        }
+    }
 
-        if (!locationGranted || !smsGranted || !bluetoothGranted) {
-            startupPermissionsLauncher.launch(startupPermissions.toTypedArray())
-        }
+    if (showStartupLocationPrePrompt) {
+        PermissionActionDialog(
+            title = stringResource(R.string.location_permission_required_title),
+            message = stringResource(R.string.location_permission_required_message),
+            confirmLabel = stringResource(R.string.allow),
+            onConfirm = {
+                showStartupLocationPrePrompt = false
+                pendingStartupLocation = false
+                if (!startupApprovedPermissions.contains(Manifest.permission.ACCESS_FINE_LOCATION)) {
+                    startupApprovedPermissions += Manifest.permission.ACCESS_FINE_LOCATION
+                }
+                proceedStartupPrePrompt()
+            },
+            dismissLabel = stringResource(R.string.cancel),
+            onDismiss = {
+                showStartupLocationPrePrompt = false
+                pendingStartupLocation = false
+                proceedStartupPrePrompt()
+            },
+            onDismissRequest = {}
+        )
+    }
+
+    if (showStartupBluetoothPrePrompt && bluetoothPermissions.isNotEmpty()) {
+        PermissionActionDialog(
+            title = stringResource(R.string.bluetooth_permission_required_title),
+            message = stringResource(R.string.bluetooth_permission_required_message),
+            confirmLabel = stringResource(R.string.allow),
+            onConfirm = {
+                showStartupBluetoothPrePrompt = false
+                pendingStartupBluetooth = false
+                bluetoothPermissions.forEach { permission ->
+                    if (!startupApprovedPermissions.contains(permission)) {
+                        startupApprovedPermissions += permission
+                    }
+                }
+                proceedStartupPrePrompt()
+            },
+            dismissLabel = stringResource(R.string.cancel),
+            onDismiss = {
+                showStartupBluetoothPrePrompt = false
+                pendingStartupBluetooth = false
+                proceedStartupPrePrompt()
+            },
+            onDismissRequest = {}
+        )
     }
 
     if (showLocationDialog && activity != null) {
@@ -237,45 +397,144 @@ fun MainScreen(
         )
     }
 
-    if (showBlePinDialog) {
-        AlertDialog(
-            onDismissRequest = { showBlePinDialog = false },
-            title = {
-                Text(
-                    text = stringResource(R.string.bluetooth_pin_dialog_title),
-                    color = colorResource(id = R.color.white)
-                )
-            },
-            text = {
-                OutlinedTextField(
-                    value = blePinInput,
-                    onValueChange = { blePinInput = it.filter(Char::isDigit).take(8) },
-                    singleLine = true,
-                    label = { Text(stringResource(R.string.bluetooth_pin_dialog_label), color = colorResource(id = R.color.white)) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    colors = smsOvhTextFieldColors()
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        showBlePinDialog = false
-                        if (blePinInput.isNotBlank()) {
-                            viewModel.connectBleDevice(blePinInput)
-                        }
-                    },
-                    colors = smsOvhButtonColors()
-                ) {
-                    Text(stringResource(R.string.bluetooth_pin_dialog_confirm))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showBlePinDialog = false }) {
-                    Text(stringResource(R.string.bluetooth_pin_dialog_cancel), color = colorResource(id = R.color.white))
-                }
-            },
-            containerColor = MaterialTheme.colorScheme.surface
+    if (showBluetoothDialog && activity != null && bluetoothPermissions.isNotEmpty()) {
+        BluetoothPermissionRequiredDialog(
+            onAllow = { bluetoothPermissionLauncher.launch(bluetoothPermissions) },
+            onOpenSettings = {
+                val intent =
+                    android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                intent.data = ("package:" + context.packageName).toUri()
+                context.startActivity(intent)
+            }
         )
+    }
+
+    if (showBluetoothDeniedDialog.value) {
+        BluetoothPermissionDeniedDialog(
+            onOpenSettings = {
+                showBluetoothDeniedDialog.value = false
+                val intent =
+                    android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                intent.data = ("package:" + context.packageName).toUri()
+                context.startActivity(intent)
+            },
+            onDismiss = { showBluetoothDeniedDialog.value = false }
+        )
+    }
+
+    // Dialogues SMS refus (rationale / refus permanent) pilotés par le ViewModel
+    val smsDeniedMode = uiState.smsDeniedDialogMode
+    if (smsDeniedMode == SmsDeniedDialogMode.RATIONALE) {
+        PermissionActionDialog(
+            title = stringResource(R.string.permission_required_title),
+            message = stringResource(R.string.permission_required_message),
+            confirmLabel = stringResource(R.string.allow),
+            onConfirm = {
+                onSmsRationaleAllow(uiState.smsDeniedForSendAction)
+            },
+            dismissLabel = stringResource(R.string.cancel),
+            onDismiss = { viewModel.dismissSmsDeniedDialog() }
+        )
+    }
+    if (smsDeniedMode == SmsDeniedDialogMode.PERMANENTLY_DENIED) {
+        PermissionActionDialog(
+            title = stringResource(R.string.permission_required_title),
+            message = stringResource(R.string.permission_denied_permanently_message),
+            confirmLabel = stringResource(R.string.settings),
+            onConfirm = {
+                viewModel.dismissSmsDeniedDialog()
+                onOpenAppSettings()
+            },
+            dismissLabel = stringResource(R.string.cancel),
+            onDismiss = { viewModel.dismissSmsDeniedDialog() }
+        )
+    }
+
+    // Dialogue optimisation batterie piloté par le ViewModel
+    if (uiState.batteryOptimizationDialogVisible) {
+        PermissionActionDialog(
+            title = stringResource(R.string.battery_optimization_title),
+            message = stringResource(R.string.battery_optimization_message),
+            confirmLabel = stringResource(R.string.allow),
+            onConfirm = { onRequestBatteryOptimization() },
+            dismissLabel = stringResource(R.string.cancel),
+            onDismiss = { viewModel.dismissBatteryOptimizationDialog() }
+        )
+    }
+
+    if (showBlePinDialog) {
+        val screenHeight = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp.dp
+        Dialog(
+            onDismissRequest = { showBlePinDialog = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(screenHeight),
+                contentAlignment = Alignment.BottomCenter
+            ) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.surface,
+                    shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 28.dp)
+                    ) {
+                        Text(
+                            text = stringResource(R.string.bluetooth_pin_dialog_title),
+                            color = colorResource(id = R.color.white),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 17.sp
+                        )
+                        Spacer(Modifier.height(16.dp))
+                        OutlinedTextField(
+                            value = blePinInput,
+                            onValueChange = { blePinInput = it.filter(Char::isDigit).take(8) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                            label = {
+                                Text(
+                                    stringResource(R.string.bluetooth_pin_dialog_label),
+                                    color = colorResource(id = R.color.white)
+                                )
+                            },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            colors = smsOvhTextFieldColors()
+                        )
+                        Spacer(Modifier.height(24.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            TextButton(
+                                onClick = { showBlePinDialog = false },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    stringResource(R.string.bluetooth_pin_dialog_cancel),
+                                    color = colorResource(id = R.color.white)
+                                )
+                            }
+                            Spacer(Modifier.padding(horizontal = 8.dp))
+                            Button(
+                                onClick = {
+                                    showBlePinDialog = false
+                                    if (blePinInput.isNotBlank()) {
+                                        viewModel.connectBleDevice(blePinInput)
+                                    }
+                                },
+                                modifier = Modifier.weight(1f),
+                                colors = smsOvhButtonColors()
+                            ) {
+                                Text(stringResource(R.string.bluetooth_pin_dialog_confirm))
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     // Récupération de la localisation réseau
@@ -318,204 +577,313 @@ fun MainScreen(
         viewModel.consumeSwitchCommandStatusMessage()
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-    ) {
+    Scaffold(
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = {
+                    Text(
+                        text = stringResource(R.string.app_name),
+                        style = MaterialTheme.typography.titleLarge,
+                        color = colorResource(id = R.color.smsovh_primary),
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
+            )
+        },
+        snackbarHost = {
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.padding(16.dp)
+            )
+        },
+        containerColor = MaterialTheme.colorScheme.background
+    ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(20.dp)
+                .padding(paddingValues)
         ) {
-
-        uiState.feedbackMessage?.let { feedbackMessage ->
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = when (uiState.feedbackType) {
-                        FeedbackType.SUCCESS -> colorResource(id = R.color.smsovh_primary).copy(alpha = 0.18f)
-                        FeedbackType.ERROR -> MaterialTheme.colorScheme.error.copy(alpha = 0.18f)
-                        FeedbackType.NONE -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
-                    }
-                )
-            ) {
-                Text(
-                    text = withStatusPrefix(feedbackMessage, uiState.feedbackType),
-                    color = colorResource(id = R.color.white),
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 14.sp,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
-                )
-            }
-            Spacer(modifier = Modifier.height(12.dp))
-        }
-        ServiceStatusRow(
-            uiState = uiState,
-            onCheckedChange = { checked -> viewModel.setServiceActive(checked) }
-        )
-        Spacer(Modifier.height(32.dp))
-        TabRow(selectedTabIndex = selectedTabIndex) {
-            tabs.forEachIndexed { index, tab ->
-                Tab(
-                    selected = selectedTabIndex == index,
-                    onClick = { viewModel.setSelectedTab(index) },
-                    modifier = Modifier.height(72.dp),
-                    text = {
-                        Text(
-                            text = tab.title,
-                            fontSize = 14.sp,
-                            fontWeight = if (selectedTabIndex == index) FontWeight.SemiBold else FontWeight.Medium
-                        )
-                    },
-                    icon = {
-                        Icon(
-                            imageVector = tab.icon,
-                            contentDescription = tab.contentDescription,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                )
-            }
-        }
-        Spacer(Modifier.height(16.dp))
-
-        when (selectedTabIndex) {
-            // Onglet 0 : "+" — Composer SMS
-            0 -> {
-                OvhSmsFormSection(
-                    senderId = senderId,
-                    recipient = recipient,
-                    message = message,
-                    onSenderIdChange = { viewModel.setSenderId(it.take(11)) },
-                    onRecipientChange = { viewModel.setRecipient(it) },
-                    onMessageChange = { viewModel.setMessage(it) }
-                )
-                SendSmsSection(
-                    enabled = uiState.canSendLocalSms,
-                    hasSendSmsPermission = hasSendSmsPermission,
-                    onRequestSmsPermission = onRequestSmsPermission,
-                    onSendSmsRequested = onSendSmsRequested
-                )
-            }
-
-            // Onglet 1 : "OVH" — Configuration OVH
-            1 -> {
-                OvhApiConfigSection(
-                    ovhAppKey = uiState.ovhAppKey,
-                    ovhAppSecret = uiState.ovhAppSecret,
-                    ovhConsumerKey = uiState.ovhConsumerKey,
-                    ovhServiceName = uiState.ovhServiceName,
-                    ovhEndpoint = uiState.ovhEndpoint,
-                    ovhCountryPrefix = uiState.ovhCountryPrefix,
-                    onOvhAppKeyChange = { viewModel.setOvhAppKey(it) },
-                    onOvhAppSecretChange = { viewModel.setOvhAppSecret(it) },
-                    onOvhConsumerKeyChange = { viewModel.setOvhConsumerKey(it) },
-                    onOvhServiceNameChange = { viewModel.setOvhServiceName(it) },
-                    onOvhEndpointChange = { viewModel.setOvhEndpoint(it) },
-                    onOvhCountryPrefixChange = { viewModel.setOvhCountryPrefix(it) }
-                )
-            }
-
-            // Onglet 2 : "API" — Configuration API REST
-            2 -> {
-                val networkLine =
-                    "${context.getString(R.string.network_label)} ${if (uiState.isIpValid) "🟢" else "🔴"}"
-                Row(
+            // Bandeau de retour (succès / erreur)
+            uiState.feedbackMessage?.let { feedbackMessage ->
+                Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { copyToClipboard("network", networkLine) }
-                        .padding(vertical = 4.dp)
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    shape = MaterialTheme.shapes.medium,
+                    colors = CardDefaults.cardColors(
+                        containerColor = when (uiState.feedbackType) {
+                            FeedbackType.SUCCESS -> colorResource(id = R.color.smsovh_primary).copy(alpha = 0.18f)
+                            FeedbackType.ERROR -> MaterialTheme.colorScheme.error.copy(alpha = 0.18f)
+                            FeedbackType.NONE -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+                        }
+                    )
                 ) {
                     Text(
-                        text = networkLine,
+                        text = withStatusPrefix(feedbackMessage, uiState.feedbackType),
                         color = colorResource(id = R.color.white),
                         fontWeight = FontWeight.SemiBold,
-                        fontSize = 14.sp
+                        fontSize = 14.sp,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
                     )
                 }
-                Spacer(Modifier.height(8.dp))
-
-                ApiNetworkSection(
-                    uiState = uiState,
-                    token = token,
-                    locationPermissionGranted = locationPermissionGranted,
-                    locationData = locationData,
-                    onRestPortInputChange = { viewModel.setRestPortInput(it) },
-                    onRestPortCommit = {
-                        if (viewModel.commitRestPort()) {
-                            focusManager.clearFocus()
-                        }
-                    },
-                    onResetToken = { viewModel.resetToken() },
-                    onCopy = copyToClipboard
-                )
             }
 
-            // Onglet 3 : "📱" — Configuration Bluetooth
-            3 -> {
-                if (!bluetoothGranted) {
-                    Text(
-                        text = stringResource(R.string.bluetooth_permission_denied_banner),
-                        color = MaterialTheme.colorScheme.error,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 14.sp,
-                        modifier = Modifier.padding(bottom = 10.dp)
+            // Statut du service (pill + switch) — fixe, hors scroll
+            ServiceStatusRow(
+                uiState = uiState,
+                onCheckedChange = { checked -> viewModel.setServiceActive(checked) },
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+            )
+
+            // Barre d'onglets M3 — fixe, ne scrolle pas avec le contenu
+            TabRow(
+                selectedTabIndex = selectedTabIndex,
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.primary
+            ) {
+                tabs.forEachIndexed { index, tab ->
+                    Tab(
+                        selected = selectedTabIndex == index,
+                        onClick = { viewModel.setSelectedTab(index) },
+                        text = {
+                            Text(
+                                text = tab.title,
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Normal
+                            )
+                        },
+                        icon = {
+                            Icon(
+                                imageVector = tab.icon,
+                                contentDescription = tab.contentDescription,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
                     )
                 }
-                BleConfigSection(
-                    batteryMinPercent = uiState.bleMinBattery,
-                    batteryMaxPercent = uiState.bleMaxBattery,
-                    isConnected = uiState.bleDeviceState == BleDeviceState.Connected,
-                    isLoading = uiState.bleDeviceState == BleDeviceState.Scanning
-                            || uiState.bleDeviceState is BleDeviceState.Found
-                            || uiState.bleDeviceState == BleDeviceState.Connecting,
-                    relayLoading = uiState.bleRelayLoading,
-                    wifiLoading = uiState.bleWifiLoading,
-                    relayEnabled = uiState.bleRelayState == BleRelayState.On,
-                    wifiEnabled = uiState.bleWifiEnabled,
-                    connectionStatus = when (uiState.bleDeviceState) {
-                        BleDeviceState.Idle -> stringResource(R.string.ble_status_idle)
-                        BleDeviceState.Scanning -> stringResource(R.string.ble_status_scanning)
-                        is BleDeviceState.Found -> stringResource(R.string.ble_status_found, uiState.bleDeviceState.name)
-                        BleDeviceState.NotFound -> stringResource(R.string.ble_status_not_found)
-                        BleDeviceState.Connecting -> stringResource(R.string.ble_status_connecting)
-                        BleDeviceState.Connected -> stringResource(R.string.ble_status_connected)
-                        BleDeviceState.InvalidPin -> stringResource(R.string.ble_status_invalid_pin)
-                        BleDeviceState.Timeout -> stringResource(R.string.ble_status_timeout)
-                        BleDeviceState.ServiceNotFound -> stringResource(R.string.ble_status_service_not_found)
-                        BleDeviceState.CharacteristicNotFound -> stringResource(R.string.ble_status_characteristic_not_found)
-                        is BleDeviceState.Error -> stringResource(R.string.ble_status_error, uiState.bleDeviceState.message)
-                        BleDeviceState.Disconnected -> stringResource(R.string.ble_status_disconnected)
-                    },
-                    errorMessage = uiState.bleErrorMessage,
-                    onBatteryMinChange = { viewModel.setBleBatteryMin(it) },
-                    onBatteryMaxChange = { viewModel.setBleBatteryMax(it) },
-                    onBatteryMinCommit = { focusManager.clearFocus() },
-                    onBatteryMaxCommit = { focusManager.clearFocus() },
-                    onConnect = {
-                        blePinInput = if (uiState.blePin.isBlank()) BleRuntimeConfig.pin else uiState.blePin
-                        showBlePinDialog = true
-                    },
-                    onDisconnect = { viewModel.disconnectBle() },
-                    onRelaySwitchChange = { isOn ->
-                        if (isOn) viewModel.sendRelayOnCommand() else viewModel.sendRelayOffCommand()
-                    },
-                    onWifiSwitchChange = { isOn ->
-                        if (isOn) viewModel.sendWifiOnCommand() else viewModel.sendWifiOffCommand()
+            }
+
+            // Contenu de chaque onglet — indépendamment scrollable
+            when (selectedTabIndex) {
+
+                // ─────────────────── Onglet 0 : Composer SMS ───────────────────
+                0 -> Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    ElevatedCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = MaterialTheme.shapes.large
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            OvhSmsFormSection(
+                                senderId = senderId,
+                                recipient = recipient,
+                                message = message,
+                                onSenderIdChange = { viewModel.setSenderId(it.take(11)) },
+                                onRecipientChange = { viewModel.setRecipient(it) },
+                                onMessageChange = { viewModel.setMessage(it) }
+                            )
+                        }
                     }
-                )
+                    ElevatedCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = MaterialTheme.shapes.large
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            SendSmsSection(
+                                enabled = uiState.canSendLocalSms,
+                                hasSendSmsPermission = hasSendSmsPermission,
+                                onRequestSmsPermission = onRequestSmsPermission,
+                                onSendSmsRequested = onSendSmsRequested
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                // ─────────────────── Onglet 1 : Config OVH ─────────────────────
+                1 -> Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    ElevatedCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = MaterialTheme.shapes.large
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            OvhApiConfigSection(
+                                ovhAppKey = uiState.ovhAppKey,
+                                ovhAppSecret = uiState.ovhAppSecret,
+                                ovhConsumerKey = uiState.ovhConsumerKey,
+                                ovhServiceName = uiState.ovhServiceName,
+                                ovhEndpoint = uiState.ovhEndpoint,
+                                ovhCountryPrefix = uiState.ovhCountryPrefix,
+                                onOvhAppKeyChange = { viewModel.setOvhAppKey(it) },
+                                onOvhAppSecretChange = { viewModel.setOvhAppSecret(it) },
+                                onOvhConsumerKeyChange = { viewModel.setOvhConsumerKey(it) },
+                                onOvhServiceNameChange = { viewModel.setOvhServiceName(it) },
+                                onOvhEndpointChange = { viewModel.setOvhEndpoint(it) },
+                                onOvhCountryPrefixChange = { viewModel.setOvhCountryPrefix(it) }
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                // ─────────────────── Onglet 2 : API REST ───────────────────────
+                2 -> Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // En-tête statut réseau (copiable)
+                    val networkLine =
+                        "${context.getString(R.string.network_label)} ${if (uiState.isIpValid) "🟢" else "🔴"}"
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { copyToClipboard("network", networkLine) },
+                        shape = MaterialTheme.shapes.medium,
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (uiState.isIpValid)
+                                colorResource(id = R.color.smsovh_primary).copy(alpha = 0.12f)
+                            else
+                                MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.30f)
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = networkLine,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = colorResource(id = R.color.white),
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Icon(
+                                imageVector = Icons.Outlined.SettingsEthernet,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                                tint = colorResource(id = R.color.white).copy(alpha = 0.7f)
+                            )
+                        }
+                    }
+                    ElevatedCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = MaterialTheme.shapes.large
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            ApiNetworkSection(
+                                uiState = uiState,
+                                token = token,
+                                locationPermissionGranted = locationPermissionGranted,
+                                locationData = locationData,
+                                onRestPortInputChange = { viewModel.setRestPortInput(it) },
+                                onRestPortCommit = {
+                                    if (viewModel.commitRestPort()) {
+                                        focusManager.clearFocus()
+                                    }
+                                },
+                                onResetToken = { viewModel.resetToken() },
+                                onCopy = copyToClipboard
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                // ─────────────────── Onglet 3 : Bluetooth / Power ──────────────
+                3 -> Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    if (!bluetoothGranted) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = MaterialTheme.shapes.medium,
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer
+                            )
+                        ) {
+                            Text(
+                                text = stringResource(R.string.bluetooth_permission_denied_banner),
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                fontWeight = FontWeight.SemiBold,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                            )
+                        }
+                    }
+                    ElevatedCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = MaterialTheme.shapes.large
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            BleConfigSection(
+                                batteryMinPercent = uiState.bleMinBattery,
+                                batteryMaxPercent = uiState.bleMaxBattery,
+                                isConnected = uiState.bleDeviceState == BleDeviceState.Connected,
+                                isLoading = uiState.bleDeviceState == BleDeviceState.Scanning
+                                        || uiState.bleDeviceState is BleDeviceState.Found
+                                        || uiState.bleDeviceState == BleDeviceState.Connecting,
+                                relayLoading = uiState.bleRelayLoading,
+                                wifiLoading = uiState.bleWifiLoading,
+                                relayEnabled = uiState.bleRelayState == BleRelayState.On,
+                                wifiEnabled = uiState.bleWifiEnabled,
+                                connectionStatus = when (uiState.bleDeviceState) {
+                                    BleDeviceState.Idle -> stringResource(R.string.ble_status_idle)
+                                    BleDeviceState.Scanning -> stringResource(R.string.ble_status_scanning)
+                                    is BleDeviceState.Found -> stringResource(R.string.ble_status_found, uiState.bleDeviceState.name)
+                                    BleDeviceState.NotFound -> stringResource(R.string.ble_status_not_found)
+                                    BleDeviceState.Connecting -> stringResource(R.string.ble_status_connecting)
+                                    BleDeviceState.Connected -> stringResource(R.string.ble_status_connected)
+                                    BleDeviceState.InvalidPin -> stringResource(R.string.ble_status_invalid_pin)
+                                    BleDeviceState.Timeout -> stringResource(R.string.ble_status_timeout)
+                                    BleDeviceState.ServiceNotFound -> stringResource(R.string.ble_status_service_not_found)
+                                    BleDeviceState.CharacteristicNotFound -> stringResource(R.string.ble_status_characteristic_not_found)
+                                    is BleDeviceState.Error -> stringResource(R.string.ble_status_error, uiState.bleDeviceState.message)
+                                    BleDeviceState.Disconnected -> stringResource(R.string.ble_status_disconnected)
+                                },
+                                errorMessage = uiState.bleErrorMessage,
+                                onBatteryMinChange = { viewModel.setBleBatteryMin(it) },
+                                onBatteryMaxChange = { viewModel.setBleBatteryMax(it) },
+                                onBatteryMinCommit = { focusManager.clearFocus() },
+                                onBatteryMaxCommit = { focusManager.clearFocus() },
+                                onConnect = {
+                                    blePinInput = if (uiState.blePin.isBlank()) BleRuntimeConfig.pin else uiState.blePin
+                                    showBlePinDialog = true
+                                },
+                                onDisconnect = { viewModel.disconnectBle() },
+                                onRelaySwitchChange = { isOn ->
+                                    if (isOn) viewModel.sendRelayOnCommand() else viewModel.sendRelayOffCommand()
+                                },
+                                onWifiSwitchChange = { isOn ->
+                                    if (isOn) viewModel.sendWifiOnCommand() else viewModel.sendWifiOffCommand()
+                                }
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
             }
         }
-    }
-
-        SnackbarHost(
-            hostState = snackbarHostState,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(16.dp)
-        )
     }
 }
 

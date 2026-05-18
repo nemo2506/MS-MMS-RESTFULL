@@ -306,6 +306,25 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    fun showSmsDeniedDialog(mode: SmsDeniedDialogMode, forSendAction: Boolean = false) {
+        _uiState.value = _uiState.value.copy(
+            smsDeniedDialogMode = mode,
+            smsDeniedForSendAction = forSendAction
+        )
+    }
+
+    fun dismissSmsDeniedDialog() {
+        _uiState.value = _uiState.value.copy(smsDeniedDialogMode = SmsDeniedDialogMode.NONE)
+    }
+
+    fun showBatteryOptimizationDialog() {
+        _uiState.value = _uiState.value.copy(batteryOptimizationDialogVisible = true)
+    }
+
+    fun dismissBatteryOptimizationDialog() {
+        _uiState.value = _uiState.value.copy(batteryOptimizationDialogVisible = false)
+    }
+
     fun setSenderId(senderId: String) {
         _uiState.value = _uiState.value.copy(senderId = senderId)
         schedulePersistCurrentSettings()
