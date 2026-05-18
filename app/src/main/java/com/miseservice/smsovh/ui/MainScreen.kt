@@ -467,7 +467,20 @@ fun MainScreen(
                     isConnected = uiState.bleDeviceState == BleDeviceState.Connected,
                     relayEnabled = uiState.bleRelayState == BleRelayState.On,
                     wifiEnabled = uiState.bleWifiEnabled,
-                    connectionStatus = getBleConnectionStatus(uiState.bleDeviceState),
+                    connectionStatus = when (uiState.bleDeviceState) {
+                        BleDeviceState.Idle -> stringResource(R.string.ble_status_idle)
+                        BleDeviceState.Scanning -> stringResource(R.string.ble_status_scanning)
+                        is BleDeviceState.Found -> stringResource(R.string.ble_status_found, uiState.bleDeviceState.name)
+                        BleDeviceState.NotFound -> stringResource(R.string.ble_status_not_found)
+                        BleDeviceState.Connecting -> stringResource(R.string.ble_status_connecting)
+                        BleDeviceState.Connected -> stringResource(R.string.ble_status_connected)
+                        BleDeviceState.InvalidPin -> stringResource(R.string.ble_status_invalid_pin)
+                        BleDeviceState.Timeout -> stringResource(R.string.ble_status_timeout)
+                        BleDeviceState.ServiceNotFound -> stringResource(R.string.ble_status_service_not_found)
+                        BleDeviceState.CharacteristicNotFound -> stringResource(R.string.ble_status_characteristic_not_found)
+                        is BleDeviceState.Error -> stringResource(R.string.ble_status_error, uiState.bleDeviceState.message)
+                        BleDeviceState.Disconnected -> stringResource(R.string.ble_status_disconnected)
+                    },
                     errorMessage = uiState.bleErrorMessage,
                     onBatteryMinChange = { viewModel.setBleBatteryMin(it) },
                     onBatteryMaxChange = { viewModel.setBleBatteryMax(it) },

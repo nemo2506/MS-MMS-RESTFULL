@@ -180,4 +180,18 @@
     <string name="bluetooth_pin_dialog_cancel">Annuler</string>
 
     <string name="bluetooth_permission_denied_banner">❌ Permission Bluetooth refusée. Activez BLUETOOTH_SCAN et BLUETOOTH_CONNECT dans les paramètres.</string>
+
+    <!-- BLE Connection Status -->
+    <string name="ble_status_idle">Inactif</string>
+    <string name="ble_status_scanning">Recherche...</string>
+    <string name="ble_status_found">Trouvé : %1$s</string>
+    <string name="ble_status_not_found">Non trouvé</string>
+    <string name="ble_status_connecting">Connexion...</string>
+    <string name="ble_status_connected">Connecté</string>
+    <string name="ble_status_invalid_pin">PIN incorrect</string>
+    <string name="ble_status_timeout">Délai de connexion écoulé</string>
+    <string name="ble_status_service_not_found">Service non trouvé</string>
+    <string name="ble_status_characteristic_not_found">Caractéristique non trouvée</string>
+    <string name="ble_status_error">Erreur : %1$s</string>
+    <string name="ble_status_disconnected">Déconnecté</string>
 </resources>
