@@ -177,7 +177,6 @@ MS-OVH-SMS/
 │   ├── EXEMPLE_DE_CLIENT_API_REST.md
 │   └── MANUEL_ACHAT_INTEGRATION_MOS_ESP32.md
 ├── screenShots/                               ← Captures d'ecran utilisees dans le README
-├── CHANGELOG_MVVM_FIX.md                      ← Historique des corrections MVVM
 ├── build.gradle
 ├── settings.gradle
 ├── gradle.properties
