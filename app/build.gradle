@@ -28,8 +28,8 @@ android {
         applicationId "com.miseservice.msmms"
         minSdk libs.versions.minSdk.get().toInteger()
         targetSdk libs.versions.targetSdk.get().toInteger()
-        versionCode 2
-        versionName "1.1.0"
+        versionCode 3
+        versionName "0.10"
         buildConfigField 'String', 'BLE_DEVICE_NAME', "\"${localOrDefault('ble.deviceName', 'ESP32_SWITCH')}\""
         buildConfigField 'String', 'BLE_SERVICE_UUID', "\"${localOrDefault('ble.serviceUuid', '6f1c2a90-3d4e-4c8b-9f12-91a8c3e7d5b1')}\""
         buildConfigField 'String', 'BLE_CHARACTERISTIC_UUID', "\"${localOrDefault('ble.characteristicUuid', 'a4d91c2e-7b3f-4a6d-9c81-2f5e8b1a9d73')}\""
