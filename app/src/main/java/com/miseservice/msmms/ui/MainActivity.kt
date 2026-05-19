@@ -183,7 +183,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onStop() {
-        viewModel.disconnectBleSilently()
         super.onStop()
         viewModel.saveAllSettings()
     }
