@@ -238,17 +238,17 @@ ble.writeType=2
 
 | Onglet SMS — Envoi SMS local | Onglet OVH — Configuration API OVH |
 |---|---|
-| ![VUE SMS](screenShots/1.%20VUE%20SMS.jpeg "Envoi SMS local") | ![VUE OVH](screenShots/2.%20VUE%20OVH.jpeg "Configuration OVH") |
+| ![VUE SMS](screenShots/1.%20VUE%20SMS_1.png "Envoi SMS local") | ![VUE OVH](screenShots/2.%20VUE%20OVH_1.png "Configuration OVH") |
 | Envoyez des SMS ou MMS directement depuis l'appareil via SmsManager. | Configurez vos identifiants OVH (appKey, secret, consumerKey) et envoyez des SMS via l'API OVH. |
 
 | Onglet API REST — Haut | Onglet Power — Pilotage Bluetooth ESP32 |
 |---|---|
-| ![VUE API HAUT](screenShots/3.%20VUE%20API%20HAUT.jpeg "API REST - Configuration") | ![VUE POWER](screenShots/5.%20VUE%20POWER.jpeg "Pilotage Bluetooth Power") |
+| ![VUE API HAUT](screenShots/3.%20VUE%20API%20HAUT_1.png "API REST - Configuration") | ![VUE POWER](screenShots/5.%20VUE%20POWER_1.png "Pilotage Bluetooth Power") |
 | Configuration du port, affichage de l'IP locale et des endpoints disponibles. | Contrôlez le module MOS/relais via Bluetooth, gérez les seuils batterie Min/Max, et les commandes relais/WiFi. |
 
 | Configuration Arduino IDE |
 |---|
-| ![ARDUINO IDE](screenShots/6.%20ARDUINO%20IDE.png "Configuration et flash ESP32") |
+| ![ARDUINO IDE](screenShots/6.%20ARDUINO%20IDE_1.png "Configuration et flash ESP32") |
 | Interface de flashage pour le firmware ESP32 (gestion BLE/Relais). |
 
 
