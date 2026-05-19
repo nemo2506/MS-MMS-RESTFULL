@@ -3,11 +3,11 @@
 ![Android MVVM](https://img.shields.io/badge/Android-MVVM-green?style=for-the-badge)
 ![Sécurité EncryptedSharedPreferences](https://img.shields.io/badge/Sécurité-EncryptedSharedPreferences-blue?style=for-the-badge)
 ![DI Hilt](https://img.shields.io/badge/DI-Hilt-yellow?style=for-the-badge)
-![Confidentialité Git](https://img.shields.io/badge/Confidentialité-Git-orange?style=for-the-badge)
+![Sécurité Git](https://img.shields.io/badge/Sécurité-Git-orange?style=for-the-badge)
 
 ---
 
-> 📱 **Application Android moderne** pour l’envoi de SMS via l’API OVH, avec **gestion sécurisée** des identifiants, **architecture MVVM**, **injection de dépendances (Hilt)**, **Sender ID alphanumérique**, **thèmes personnalisés** et **protection de la confidentialité** (Git).
+> 📱 **Application Android moderne** pour l’envoi de SMS via l’API OVH, avec **gestion sécurisée** des identifiants, **architecture MVVM**, **injection de dépendances (Hilt)**, **Sender ID alphanumérique**, **thèmes personnalisés** et **protection des données** (Git).
 
 ---
 
@@ -22,7 +22,7 @@
 🎨 **Thème clair/sombre**, identité graphique personnalisée  
 🖼️ **Icônes vectorielles** importées, projet totalement indépendant  
 ✅ **Bonnes pratiques Android** (modularité, testabilité)  
-🛡️ **Confidentialité** (.gitignore & .git/info/exclude)  
+🛡️ **Gestion Git** (.gitignore & .git/info/exclude)
 📡 **Journalisation automatique** des statuts SMS (succès/échec) via une API locale (`/api/logs`)  
 🌐 **Détection dynamique de l’IP locale** pour l’API de logs (NetworkInfoProvider)  
 🔄 **Gestion avancée des erreurs SIM/SMS** (retours contextualisés, logs API)  
@@ -95,9 +95,9 @@ flowchart LR
 ---
 
 
-## 🔒 Sécurité & Confidentialité
+## 🔒 Sécurité & Données
 
-> 🔒 **Sécurité & Confidentialité**
+> 🔒 **Sécurité & Données**
 >
 > - 🔑 **Identifiants OVH + token API** stockés localement de manière sécurisée (`EncryptedSharedPreferences` + `MasterKey`)
 > - 🛢️ **Séparation des données** : les réglages applicatifs sont persistés via Room, les secrets restent hors base en clair
@@ -245,6 +245,11 @@ ble.writeType=2
 |---|---|
 | ![VUE API HAUT](screenShots/3.%20VUE%20API%20HAUT.jpeg "API REST - Configuration") | ![VUE POWER](screenShots/5.%20VUE%20POWER.jpeg "Pilotage Bluetooth Power") |
 | Configuration du port, affichage de l'IP locale et des endpoints disponibles. | Contrôlez le module MOS/relais via Bluetooth, gérez les seuils batterie Min/Max, et les commandes relais/WiFi. |
+
+| Configuration Arduino IDE |
+|---|
+| ![ARDUINO IDE](screenShots/6.%20ARDUINO%20IDE.png "Configuration et flash ESP32") |
+| Interface de flashage pour le firmware ESP32 (gestion BLE/Relais). |
 
 
 
