@@ -1,44 +1,49 @@
 package com.miseservice.msmms.viewmodel
 
-import android.content.Intent
-import android.content.IntentFilter
-import android.os.BatteryManager
 import android.content.Context
 import android.util.Log
-import com.miseservice.msmms.R
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.miseservice.msmms.domain.usecase.SendSmsUseCase
-import com.miseservice.msmms.domain.usecase.SendOvhSmsUseCase
-import com.miseservice.msmms.domain.usecase.GetSettingsUseCase
-import com.miseservice.msmms.domain.usecase.UpdateRestPortUseCase
-import com.miseservice.msmms.domain.usecase.ScanBleDeviceUseCase
-import com.miseservice.msmms.domain.usecase.ConnectBleUseCase
-import com.miseservice.msmms.domain.usecase.SendBleCommandUseCase
-import com.miseservice.msmms.domain.usecase.ReadBleStateUseCase
-import com.miseservice.msmms.model.*
-import com.miseservice.msmms.model.BleCommand
+import com.miseservice.msmms.R
+import com.miseservice.msmms.data.repository.NetworkRepository
 import com.miseservice.msmms.data.repository.SettingsRepository
+import com.miseservice.msmms.domain.usecase.ConnectBleUseCase
+import com.miseservice.msmms.domain.usecase.GetSettingsUseCase
+import com.miseservice.msmms.domain.usecase.ReadBleStateUseCase
+import com.miseservice.msmms.domain.usecase.ScanBleDeviceUseCase
+import com.miseservice.msmms.domain.usecase.SendBleCommandUseCase
+import com.miseservice.msmms.domain.usecase.SendOvhSmsUseCase
+import com.miseservice.msmms.domain.usecase.SendSmsUseCase
+import com.miseservice.msmms.domain.usecase.UpdateRestPortUseCase
+import com.miseservice.msmms.model.BleCommand
+import com.miseservice.msmms.model.BleDeviceState
+import com.miseservice.msmms.model.BleRelayState
+import com.miseservice.msmms.model.BleRuntimeConfig
+import com.miseservice.msmms.model.OvhSmsRequest
+import com.miseservice.msmms.model.SendResult
+import com.miseservice.msmms.model.SmsMessage
 import com.miseservice.msmms.service.ServiceControlManager
 import com.miseservice.msmms.util.ApiTokenManager
+import com.miseservice.msmms.util.BatteryHelper
+import com.miseservice.msmms.util.BleMessageResolver
+import com.miseservice.msmms.util.ClipboardProvider
+import com.miseservice.msmms.util.LocationDataProvider
 import com.miseservice.msmms.util.PhoneNumberValidator
 import com.miseservice.msmms.util.RestServerEventManager
 import com.miseservice.msmms.util.RestServerEventType
-import com.miseservice.msmms.util.LocationDataProvider
 import com.miseservice.msmms.util.SimNetworkStatusProvider
-import com.miseservice.msmms.util.ClipboardProvider
 import com.miseservice.msmms.util.ValidationHelper
-import com.miseservice.msmms.util.BleMessageResolver
-import com.miseservice.msmms.util.BatteryHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import javax.inject.Inject
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import javax.inject.Inject
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
@@ -57,7 +62,8 @@ class MainViewModel @Inject constructor(
     private val serviceToggleProcessor: ServiceToggleProcessor,
     private val locationDataProvider: LocationDataProvider,
     private val simNetworkStatusProvider: SimNetworkStatusProvider,
-    private val clipboardProvider: ClipboardProvider
+    private val clipboardProvider: ClipboardProvider,
+    private val networkRepository: NetworkRepository
 ) : ViewModel() {
     // BleMessageResolver créé directement sans injection pour éviter les conflits Hilt
     private val bleMessageResolver: BleMessageResolver = BleMessageResolver(context)
@@ -66,6 +72,7 @@ class MainViewModel @Inject constructor(
     private var autoRelayMonitorJob: Job? = null
     private var simNetworkMonitorJob: Job? = null
     private var lastAppliedServiceActive: Boolean? = null
+
     @Volatile
     private var isRestPortEditing: Boolean = false
     private var pendingObservedSettings: com.miseservice.msmms.data.local.AppSettingsEntity? = null
@@ -98,12 +105,16 @@ class MainViewModel @Inject constructor(
 
     private fun applyObservedSettings(currentSettings: com.miseservice.msmms.data.local.AppSettingsEntity) {
         val host = currentSettings.hostIp ?: _uiState.value.hostIp
-        val restPort = currentSettings.restPort.takeIf { ValidationHelper.isPortValid(it) } ?: ValidationHelper.DEFAULT_REST_PORT
+        val restPort = currentSettings.restPort.takeIf { ValidationHelper.isPortValid(it) }
+            ?: ValidationHelper.DEFAULT_REST_PORT
         runCatching {
             applyServiceActiveState(currentSettings.serviceActive)
         }.onFailure { error ->
             _uiState.value = _uiState.value.copy(
-                feedbackMessage = context.getString(R.string.service_unavailable_message, error.message.orEmpty()),
+                feedbackMessage = context.getString(
+                    R.string.service_unavailable_message,
+                    error.message.orEmpty()
+                ),
                 feedbackType = FeedbackType.ERROR
             )
         }
@@ -168,7 +179,10 @@ class MainViewModel @Inject constructor(
         if (state.bleRelayLoading) return
 
         val batteryPercent = BatteryHelper.getCurrentBatteryPercent(context) ?: return
-        Log.d("POWER_RULE", "battery=$batteryPercent min=${state.bleMinBattery} max=${state.bleMaxBattery} relay=${state.bleRelayState}")
+        Log.d(
+            "POWER_RULE",
+            "battery=$batteryPercent min=${state.bleMinBattery} max=${state.bleMaxBattery} relay=${state.bleRelayState}"
+        )
 
         if (state.bleRelayState != BleRelayState.On && batteryPercent < state.bleMinBattery) {
             sendRelayOnCommand()
@@ -300,6 +314,40 @@ class MainViewModel @Inject constructor(
 
         // Surveillance autonome de l'état du réseau SIM
         startSimNetworkMonitoring()
+        refreshNetworkInfo()
+    }
+
+    fun refreshNetworkInfo() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                isNetworkLoading = true,
+                wifiSsid = null
+            )
+            // Détection réseau via le repo, idéalement sur un thread IO car c'est bloquant
+            val snapshot = withContext(Dispatchers.IO) {
+                networkRepository.detect(_uiState.value.restPort)
+            }
+            val ssidValue = when {
+                !snapshot.isWifiConnected -> context.getString(R.string.network_not_connected)
+                !snapshot.wifiSsid.isNullOrBlank() -> snapshot.wifiSsid
+                !snapshot.hasLocationPermission -> context.getString(R.string.ssid_requires_location_permission)
+                !snapshot.isLocationEnabled -> context.getString(R.string.ssid_requires_location_enabled)
+                else -> context.getString(R.string.ssid_unavailable)
+            }
+            Log.d("MainViewModel", "Network refresh: SSID collected = $ssidValue, IP = ${snapshot.localIpAddress}")
+            _uiState.value = _uiState.value.copy(
+                wifiSsid = ssidValue,
+                hasFineLocation = snapshot.hasLocationPermission,
+                isLocationEnabledInSystem = snapshot.isLocationEnabled,
+                hostIp = snapshot.localIpAddress ?: _uiState.value.hostIp,
+                isIpValid = ValidationHelper.isHostIpUsable(snapshot.localIpAddress ?: ""),
+                isNetworkLoading = false
+            )
+            // Refresh location if permission is already granted during network refresh
+            if (_uiState.value.locationPermissionGranted) {
+                fetchCurrentLocation()
+            }
+        }
     }
 
     fun resetToken() {
@@ -353,7 +401,12 @@ class MainViewModel @Inject constructor(
     }
 
     fun setSelectedTab(index: Int) {
+        val previousTab = _uiState.value.selectedTabIndex
         _uiState.value = _uiState.value.copy(selectedTabIndex = index)
+        // Refresh network info when entering API tab (index 1)
+        if (index == 1 && previousTab != 1) {
+            refreshNetworkInfo()
+        }
     }
 
     fun setOvhAppKey(value: String) {
@@ -481,7 +534,11 @@ class MainViewModel @Inject constructor(
     }
 
     fun setLocationPermissionGranted(granted: Boolean) {
+        val previous = _uiState.value.locationPermissionGranted
         _uiState.value = _uiState.value.copy(locationPermissionGranted = granted)
+        if (granted && !previous) {
+            refreshNetworkInfo()
+        }
     }
 
     fun setLocationData(location: Pair<Double, Double>?) {
@@ -504,9 +561,13 @@ class MainViewModel @Inject constructor(
                     delay(4000)
                     clearFeedback()
                 }
+
                 is SendResult.Error -> {
                     _uiState.value = _uiState.value.copy(
-                        feedbackMessage = context.getString(R.string.feedback_error_with_message, result.message),
+                        feedbackMessage = context.getString(
+                            R.string.feedback_error_with_message,
+                            result.message
+                        ),
                         feedbackType = FeedbackType.ERROR
                     )
                     delay(5000)
@@ -519,7 +580,8 @@ class MainViewModel @Inject constructor(
     fun sendOvhSms() {
         val state = _uiState.value
         val defaultCountryCode = state.ovhCountryPrefix.removePrefix("+").ifBlank { "33" }
-        val normalizedRecipient = PhoneNumberValidator.normalize(state.recipient, defaultCountryCode)
+        val normalizedRecipient =
+            PhoneNumberValidator.normalize(state.recipient, defaultCountryCode)
         if (normalizedRecipient == null) {
             _uiState.value = _uiState.value.copy(
                 feedbackMessage = context.getString(
@@ -554,9 +616,13 @@ class MainViewModel @Inject constructor(
                     delay(4000)
                     clearFeedback()
                 }
+
                 is SendResult.Error -> {
                     _uiState.value = _uiState.value.copy(
-                        feedbackMessage = context.getString(R.string.feedback_error_with_message, result.message),
+                        feedbackMessage = context.getString(
+                            R.string.feedback_error_with_message,
+                            result.message
+                        ),
                         feedbackType = FeedbackType.ERROR
                     )
                     delay(5000)
@@ -603,21 +669,17 @@ class MainViewModel @Inject constructor(
      */
     fun fetchCurrentLocation() {
         viewModelScope.launch {
-            val location = locationDataProvider.getLastKnownLocation()
+            _uiState.value = _uiState.value.copy(locationData = null)
+            val location = withContext(Dispatchers.IO) {
+                locationDataProvider.getLastKnownLocation()
+            }
             if (location != null) {
                 setLocationData(location)
             }
         }
     }
 
-    /**
-     * Récupère la localisation si la permission est accordée.
-     */
-    fun refreshLocationIfPermitted() {
-        if (_uiState.value.locationPermissionGranted) {
-            fetchCurrentLocation()
-        }
-    }
+
 
     /**
      * Met a jour le seuil bas (0..100) pour l'automatisation BLE et persiste l'etat UI.
@@ -625,12 +687,12 @@ class MainViewModel @Inject constructor(
      * Note: la logique de declenchement immediate ci-dessous depend du niveau batterie
      * recu du module et doit etre appelee avec une telemetrie batterie fiable.
      */
-     fun setBleBatteryMin(percent: Int) {
-         val clamped = percent.coerceIn(0, 100)
-         _uiState.value = _uiState.value.copy(bleMinBattery = clamped)
-         schedulePersistCurrentSettings()
-         evaluateBatteryRuleAndExecute()
-      }
+    fun setBleBatteryMin(percent: Int) {
+        val clamped = percent.coerceIn(0, 100)
+        _uiState.value = _uiState.value.copy(bleMinBattery = clamped)
+        schedulePersistCurrentSettings()
+        evaluateBatteryRuleAndExecute()
+    }
 
     /**
      * Met a jour le seuil haut (0..100) pour l'automatisation BLE et persiste l'etat UI.
@@ -638,12 +700,12 @@ class MainViewModel @Inject constructor(
      * Note: la logique de declenchement immediate ci-dessous depend du niveau batterie
      * recu du module et doit etre appelee avec une telemetrie batterie fiable.
      */
-      fun setBleBatteryMax(percent: Int) {
-         val clamped = percent.coerceIn(0, 100)
-         _uiState.value = _uiState.value.copy(bleMaxBattery = clamped)
-         schedulePersistCurrentSettings()
-         evaluateBatteryRuleAndExecute()
-      }
+    fun setBleBatteryMax(percent: Int) {
+        val clamped = percent.coerceIn(0, 100)
+        _uiState.value = _uiState.value.copy(bleMaxBattery = clamped)
+        schedulePersistCurrentSettings()
+        evaluateBatteryRuleAndExecute()
+    }
 
 
     // ── Commandes Bluetooth ESP32 ──────────────────────────────────────────────
@@ -659,66 +721,77 @@ class MainViewModel @Inject constructor(
                         bleErrorMessage = null
                     )
                 }
+
                 is BleDeviceState.NotFound -> {
                     _uiState.value = _uiState.value.copy(
                         bleDeviceState = result,
                         bleErrorMessage = bleMessageResolver.getErrorMessage(result)
                     )
                 }
+
                 is BleDeviceState.Error -> {
                     _uiState.value = _uiState.value.copy(
                         bleDeviceState = result,
                         bleErrorMessage = bleMessageResolver.getErrorMessage(result)
                     )
                 }
+
                 BleDeviceState.Scanning -> {
                     _uiState.value = _uiState.value.copy(
                         bleDeviceState = result,
                         bleErrorMessage = null
                     )
                 }
+
                 BleDeviceState.Connecting -> {
                     _uiState.value = _uiState.value.copy(
                         bleDeviceState = result,
                         bleErrorMessage = null
                     )
                 }
+
                 BleDeviceState.Connected -> {
                     _uiState.value = _uiState.value.copy(
                         bleDeviceState = result,
                         bleErrorMessage = null
                     )
                 }
+
                 BleDeviceState.InvalidPin -> {
                     _uiState.value = _uiState.value.copy(
                         bleDeviceState = result,
                         bleErrorMessage = bleMessageResolver.getErrorMessage(result)
                     )
                 }
+
                 BleDeviceState.Timeout -> {
                     _uiState.value = _uiState.value.copy(
                         bleDeviceState = result,
                         bleErrorMessage = bleMessageResolver.getErrorMessage(result)
                     )
                 }
+
                 BleDeviceState.ServiceNotFound -> {
                     _uiState.value = _uiState.value.copy(
                         bleDeviceState = result,
                         bleErrorMessage = bleMessageResolver.getErrorMessage(result)
                     )
                 }
+
                 BleDeviceState.CharacteristicNotFound -> {
                     _uiState.value = _uiState.value.copy(
                         bleDeviceState = result,
                         bleErrorMessage = bleMessageResolver.getErrorMessage(result)
                     )
                 }
+
                 BleDeviceState.Disconnected -> {
                     _uiState.value = _uiState.value.copy(
                         bleDeviceState = result,
                         bleErrorMessage = null
                     )
                 }
+
                 BleDeviceState.Idle -> {
                     _uiState.value = _uiState.value.copy(
                         bleDeviceState = result,
@@ -758,10 +831,10 @@ class MainViewModel @Inject constructor(
             val result = connectBleUseCase(_uiState.value.bleDeviceAddress, pin)
             val connected = result == BleDeviceState.Connected
             val remoteState = if (connected) readBleStateUseCase() else null
-             _uiState.value = _uiState.value.copy(
-                 bleDeviceState = result,
-                 blePin = if (connected) pin else _uiState.value.blePin,
-                 bleErrorMessage = if (connected) null else bleMessageResolver.getErrorMessage(result),
+            _uiState.value = _uiState.value.copy(
+                bleDeviceState = result,
+                blePin = if (connected) pin else _uiState.value.blePin,
+                bleErrorMessage = if (connected) null else bleMessageResolver.getErrorMessage(result),
                 bleRelayState = when (remoteState) {
                     BleRelayState.On, BleRelayState.Off -> remoteState
                     else -> _uiState.value.bleRelayState

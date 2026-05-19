@@ -35,6 +35,12 @@
     <string name="api_network_info_title">API &amp; NETWORK INFORMATION</string>
     <string name="network_not_connected">Not connected</string>
     <string name="connected_ip_label">Connected IP</string>
+    <string name="ssid_label">SSID</string>
+    <string name="ssid_unavailable">SSID unavailable</string>
+    <string name="ssid_requires_location_permission">Allow location to read SSID</string>
+    <string name="ssid_requires_location_enabled">Enable location to read SSID</string>
+    <string name="ssid_hint_fine_location_required">Android 10+ requires FINE location permission for SSID.</string>
+    <string name="ssid_hint_gps_required">Android 10+ requires GPS to be enabled to provide network name.</string>
     <string name="api_endpoints_title">API ENDPOINTS</string>
     <string name="api_token_section_title">SECURITY</string>
     <!-- System status dialog -->
@@ -57,7 +63,7 @@
     <string name="network_copied">✅ Network copied</string>
     <string name="copied_in_clipboard">in clipboard</string>
     <string name="endpoint_wifi_hint">Connect to Wi-Fi to display active endpoints.</string>
-    <string name="rest_port_label">API port</string>
+    <string name="rest_port_label">Port</string>
     <string name="rest_port_hint">E.g. 8080</string>
     <string name="rest_port_required">API port is required.</string>
     <string name="rest_port_invalid">The port must be a number between 1 and 65535.</string>
@@ -205,20 +211,24 @@
     <string name="ble_status_found">Found: %1$s</string>
     <string name="ble_status_not_found">Not found</string>
     <string name="ble_status_connecting">Connecting…</string>
-    <string name="ble_status_connected">Connected</string>
-    <string name="ble_status_invalid_pin">Invalid PIN</string>
-    <string name="ble_status_timeout">Connection timeout</string>
-    <string name="ble_status_service_not_found">Service not found</string>
-    <string name="ble_status_characteristic_not_found">Characteristic not found</string>
-    <string name="ble_status_error">Error: %1$s</string>
-    <string name="ble_status_disconnected">Disconnected</string>
+    <string name="ble_status_connected">✅ Connected</string>
+    <string name="ble_status_invalid_pin">❌ Invalid PIN</string>
+    <string name="ble_status_timeout">❌ Connection timeout</string>
+    <string name="ble_status_service_not_found">❌ Service not found</string>
+    <string name="ble_status_characteristic_not_found">❌ Characteristic not found</string>
+    <string name="ble_status_error">❌ Error: %1$s</string>
+    <string name="ble_status_disconnected">❌ Disconnected</string>
     <string name="relay_command_sent">Relay command sent</string>
-    <string name="relay_command_confirmed">Relay command confirmed</string>
-    <string name="relay_command_failed">Relay command failed</string>
+    <string name="relay_command_confirmed">✅ Relay command confirmed</string>
+    <string name="relay_command_failed">❌ Relay command failed</string>
     <string name="wifi_command_sent">Wi-Fi command sent</string>
-    <string name="wifi_command_confirmed">Wi-Fi command confirmed</string>
-    <string name="wifi_command_failed">Wi-Fi command failed</string>
+    <string name="wifi_command_confirmed">✅ Wi-Fi command confirmed</string>
+    <string name="wifi_command_failed">❌ Wi-Fi command failed</string>
     <string name="bluetooth_command_sent">Bluetooth command sent</string>
-    <string name="bluetooth_command_confirmed">Bluetooth command confirmed</string>
-    <string name="bluetooth_command_failed">Bluetooth command failed</string>
+    <string name="bluetooth_command_confirmed">✅ Bluetooth command confirmed</string>
+    <string name="bluetooth_command_failed">❌ Bluetooth command failed</string>
+
+    <!-- Startup -->
+    <string name="startup_permissions_message">To function correctly, the application requires SMS (sending), Location (reading Wi-Fi SSID), Phone status (SIM network), Bluetooth (charging management) and Notifications (service status) permissions.</string>
+    <string name="startup_permissions_title">System Requirements</string>
 </resources>

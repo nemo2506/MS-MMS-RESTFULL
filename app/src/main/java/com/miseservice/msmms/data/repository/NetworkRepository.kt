@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.location.LocationManager
 import android.net.ConnectivityManager
-import android.net.LinkProperties
 import android.net.NetworkCapabilities
 import android.net.wifi.WifiInfo
 import android.net.wifi.WifiManager
@@ -52,49 +51,50 @@ class NetworkRepository(private val context: Context) {
     private fun isWifiConnected(): Boolean {
         val manager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
             ?: return false
-        val network = manager.activeNetwork ?: return false
-        val capabilities = manager.getNetworkCapabilities(network) ?: return false
-        return capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
+        
+        return runCatching {
+            val activeNetwork = manager.activeNetwork
+            if (activeNetwork != null) {
+                val capabilities = manager.getNetworkCapabilities(activeNetwork)
+                if (capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true) {
+                    return true
+                }
+            }
+
+            manager.allNetworks.any { network ->
+                val capabilities = manager.getNetworkCapabilities(network)
+                capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
+            }
+        }.getOrDefault(false)
     }
 
     private fun localIpAddress(): String? {
-        val activeWifiIp = activeWifiIpv4Address()
-        if (!activeWifiIp.isNullOrBlank()) return activeWifiIp
-
+        // On privilégie NetworkInterface car LinkProperties.getLinkAddresses() crash sur certains devices
         return runCatching {
-            NetworkInterface.getNetworkInterfaces().toList()
-                .asSequence()
-                .filter { it.isUp && !it.isLoopback }
-                .flatMap { it.inetAddresses.toList().asSequence() }
-                .mapNotNull { address ->
-                    val host = address.hostAddress ?: return@mapNotNull null
-                    if (host.contains(":")) null else host
-                }
-                .firstOrNull()
-        }.getOrNull()
-    }
-
-    private fun activeWifiIpv4Address(): String? {
-        val manager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return null
-        val network = manager.activeNetwork ?: return null
-        val capabilities = manager.getNetworkCapabilities(network) ?: return null
-        if (!capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) return null
-
-        val linkProperties: LinkProperties = manager.getLinkProperties(network) ?: return null
-        return runCatching {
-            linkProperties.linkAddresses
-                .asSequence()
-                .map { it.address }
+            val interfaces = NetworkInterface.getNetworkInterfaces().toList()
+            
+            // 1. Priorité aux interfaces Wi-Fi (wlan, eth)
+            val wifiIp = interfaces
+                .filter { it.isUp && (it.name.contains("wlan", true) || it.name.contains("eth", true)) }
+                .flatMap { it.inetAddresses.toList() }
                 .filterIsInstance<Inet4Address>()
-                .map { it.hostAddress }
-                .firstOrNull { !it.isNullOrBlank() }
+                .firstOrNull { !it.isLoopbackAddress }
+                ?.hostAddress
+            
+            if (wifiIp != null) return wifiIp
+
+            // 2. Fallback sur n'importe quelle interface UP (non loopback, non p2p)
+            interfaces
+                .filter { it.isUp && !it.isLoopback && !it.name.contains("p2p", true) }
+                .flatMap { it.inetAddresses.toList() }
+                .filterIsInstance<Inet4Address>()
+                .firstOrNull { !it.isLoopbackAddress }
+                ?.hostAddress
         }.getOrNull()
     }
 
     private fun hasLocationPermission(): Boolean {
-        val fine = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
-        val coarse = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
-        return fine || coarse
+        return ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
     }
 
     private fun isLocationEnabled(): Boolean {

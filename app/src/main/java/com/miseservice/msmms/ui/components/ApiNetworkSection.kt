@@ -7,18 +7,22 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.TextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -35,15 +39,17 @@ import java.util.Locale
 fun ApiNetworkSection(
     uiState: MainUiState,
     token: String,
-    locationPermissionGranted: Boolean,
-    locationData: Pair<Double, Double>?,
     onRestPortInputChange: (String) -> Unit,
     onRestPortCommit: () -> Unit,
     onResetToken: () -> Unit,
-    onCopy: (String, String) -> Unit
+    onCopy: (String, String) -> Unit,
+    onRefreshNetwork: () -> Unit
 ) {
     val emphasizedLabelSize = 18.sp
     var showResetTokenDialog by rememberSaveable { mutableStateOf(false) }
+
+    // Note: Le rafraîchissement est maintenant déclenché par le ViewModel lors du changement d'onglet
+    // ou manuellement via une action utilisateur si nécessaire.
 
     if (showResetTokenDialog) {
         PermissionActionDialog(
@@ -94,6 +100,59 @@ fun ApiNetworkSection(
         onCopy = { onCopy("connected-ip", ipValue) },
         label = { Text(stringResource(R.string.connected_ip_label), fontSize = emphasizedLabelSize) }
     )
+    Spacer(Modifier.height(10.dp))
+
+    val ssidValue = if (uiState.isNetworkLoading && uiState.wifiSsid == null) {
+        ""
+    } else {
+        uiState.wifiSsid ?: stringResource(R.string.ssid_unavailable)
+    }
+    
+    // Message d'avertissement si le SSID est masqué par manque de permissions précises ou GPS
+    val ssidHint = when {
+        uiState.wifiSsid == stringResource(R.string.ssid_unavailable) && !uiState.hasFineLocation -> 
+            stringResource(R.string.ssid_hint_fine_location_required)
+        uiState.wifiSsid == stringResource(R.string.ssid_unavailable) && !uiState.isLocationEnabledInSystem ->
+            stringResource(R.string.ssid_hint_gps_required)
+        else -> null
+    }
+
+    CopyableReadOnlyField(
+        value = ssidValue,
+        onCopy = { onCopy("ssid", ssidValue) },
+        label = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable { onRefreshNetwork() }
+            ) {
+                Text(stringResource(R.string.ssid_label), fontSize = emphasizedLabelSize)
+                Spacer(modifier = Modifier.width(8.dp))
+                if (uiState.isNetworkLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = colorResource(id = R.color.smsovh_primary)
+                    )
+                } else {
+                    // Petite icône de refresh ou texte indicatif pour rafraîchir manuellement
+                    Text(
+                        text = " ↻",
+                        color = colorResource(id = R.color.smsovh_primary),
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+    )
+    if (ssidHint != null) {
+        Text(
+            text = ssidHint,
+            color = colorResource(id = R.color.smsovh_primary).copy(alpha = 0.8f),
+            fontSize = 12.sp,
+            modifier = Modifier.padding(start = 16.dp, top = 2.dp)
+        )
+    }
     Spacer(Modifier.height(10.dp))
 
     val sendEndpoint = if (uiState.isIpValid) {
@@ -178,13 +237,13 @@ fun ApiNetworkSection(
     )
 
     Spacer(Modifier.height(10.dp))
-    val locationValue = if (locationPermissionGranted && locationData != null) {
-        "${String.format(Locale.getDefault(), "%.5f", locationData.first)}, ${String.format(
+    val locationValue = if (uiState.locationPermissionGranted && uiState.locationData != null) {
+        "${String.format(Locale.getDefault(), "%.5f", uiState.locationData.first)}, ${String.format(
             Locale.getDefault(),
             "%.5f",
-            locationData.second
+            uiState.locationData.second
         )}"
-    } else if (!locationPermissionGranted) {
+    } else if (!uiState.locationPermissionGranted) {
         stringResource(R.string.location_not_authorized)
     } else {
         stringResource(R.string.location_loading)

@@ -27,7 +27,7 @@ import com.miseservice.msmms.util.BatteryOptimizationHelper
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
     private val viewModel: MainViewModel by viewModels()
-    private lateinit var requestSendSmsPermission: ActivityResultLauncher<String>
+    private lateinit var requestMultiplePermissions: ActivityResultLauncher<Array<String>>
     private lateinit var requestIgnoreBatteryOptimization: ActivityResultLauncher<Intent>
     private var pendingSendSmsAfterPermission: Boolean = false
     private val bluetoothStateReceiver = object : BroadcastReceiver() {
@@ -48,16 +48,50 @@ class MainActivity : AppCompatActivity() {
         startActivity(intent)
     }
 
-    private fun hasAllSmsPermissions(): Boolean {
-        return ContextCompat.checkSelfPermission(
-            this,
-            Manifest.permission.SEND_SMS
-        ) == PackageManager.PERMISSION_GRANTED
+    private fun hasRequiredPermissions(): Boolean {
+        val required = mutableListOf(
+            Manifest.permission.SEND_SMS,
+            Manifest.permission.READ_PHONE_STATE,
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        )
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            required.add(Manifest.permission.BLUETOOTH_CONNECT)
+            required.add(Manifest.permission.BLUETOOTH_SCAN)
+        }
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            required.add(Manifest.permission.POST_NOTIFICATIONS)
+        }
+        return required.all {
+            ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
+        }
     }
 
-    private fun launchSmsPermissionRequest(forSendAction: Boolean) {
-        pendingSendSmsAfterPermission = forSendAction
-        requestSendSmsPermission.launch(Manifest.permission.SEND_SMS)
+    private fun checkAndRequestPermissions() {
+        val required = mutableListOf(
+            Manifest.permission.SEND_SMS,
+            Manifest.permission.READ_PHONE_STATE,
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        )
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            required.add(Manifest.permission.BLUETOOTH_CONNECT)
+            required.add(Manifest.permission.BLUETOOTH_SCAN)
+        }
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            required.add(Manifest.permission.POST_NOTIFICATIONS)
+        }
+
+        val missing = required.filter {
+            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+        }
+
+        if (missing.isNotEmpty()) {
+            requestMultiplePermissions.launch(missing.toTypedArray())
+        } else {
+            // Toutes les permissions sont déjà là, on vérifie la batterie
+            maybeRequestBatteryOptimizationExemption()
+        }
     }
 
     private fun maybeRequestBatteryOptimizationExemption() {
@@ -78,36 +112,51 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        requestSendSmsPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
-            if (isGranted) {
-                if (pendingSendSmsAfterPermission) {
-                    viewModel.sendSms()
-                }
-                pendingSendSmsAfterPermission = false
-            } else {
-                val shouldSendAfterPermission = pendingSendSmsAfterPermission
-                val permanentlyDenied = !androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(
+        requestMultiplePermissions = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { results ->
+            // Mise à jour de l'état de la permission de localisation dans le ViewModel
+            val locationGranted = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+                    ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+            viewModel.setLocationPermissionGranted(locationGranted)
+
+            if (results.containsKey(Manifest.permission.SEND_SMS)) {
+                if (results[Manifest.permission.SEND_SMS] == true) {
+                    if (pendingSendSmsAfterPermission) {
+                        viewModel.sendSms()
+                    }
+                } else {
+                    val permanentlyDenied = !androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(
                         this,
                         Manifest.permission.SEND_SMS
                     )
-                if (permanentlyDenied) {
-                    viewModel.showSmsDeniedDialog(SmsDeniedDialogMode.PERMANENTLY_DENIED, shouldSendAfterPermission)
-                } else {
-                    viewModel.showSmsDeniedDialog(SmsDeniedDialogMode.RATIONALE, shouldSendAfterPermission)
+                    viewModel.showSmsDeniedDialog(
+                        if (permanentlyDenied) SmsDeniedDialogMode.PERMANENTLY_DENIED else SmsDeniedDialogMode.RATIONALE,
+                        pendingSendSmsAfterPermission
+                    )
                 }
-                pendingSendSmsAfterPermission = false
             }
+            pendingSendSmsAfterPermission = false
+            viewModel.refreshNetworkInfo()
+            
+            // On enchaîne avec l'exemption de batterie uniquement après la fin du workflow des permissions système
+            maybeRequestBatteryOptimizationExemption()
         }
+
         setContent {
             SmsOvhTheme {
                 MainScreen(
                     viewModel = viewModel,
-                    hasSendSmsPermission = { hasAllSmsPermissions() },
-                    onRequestSmsPermission = { launchSmsPermissionRequest(true) },
+                    hasSendSmsPermission = {
+                        ContextCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED
+                    },
+                    onRequestSmsPermission = { forAction ->
+                        pendingSendSmsAfterPermission = forAction
+                        checkAndRequestPermissions()
+                    },
                     onSendSmsRequested = { viewModel.sendSms() },
                     onSmsRationaleAllow = { forSendAction ->
                         viewModel.dismissSmsDeniedDialog()
-                        launchSmsPermissionRequest(forSendAction)
+                        pendingSendSmsAfterPermission = forSendAction
+                        checkAndRequestPermissions()
                     },
                     onOpenAppSettings = { openAppSettings() },
                     onRequestBatteryOptimization = {
@@ -119,12 +168,18 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        maybeRequestBatteryOptimizationExemption()
+        // Supprimé : checkAndRequestPermissions() est maintenant déclenché par MainScreen via le pre-prompt
+        // checkAndRequestPermissions()
 
         registerReceiver(
             bluetoothStateReceiver,
             IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED)
         )
+    }
+
+    override fun onResume() {
+        super.onResume()
+        viewModel.refreshNetworkInfo()
     }
 
     override fun onStop() {

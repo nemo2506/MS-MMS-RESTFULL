@@ -12,6 +12,7 @@ import com.miseservice.msmms.util.RestServerEventManager
 import com.miseservice.msmms.util.ClipboardProvider
 import com.miseservice.msmms.util.LocationDataProvider
 import com.miseservice.msmms.util.SimNetworkStatusProvider
+import com.miseservice.msmms.data.repository.NetworkRepository
 import com.miseservice.msmms.service.AndroidServiceControlManager
 import com.miseservice.msmms.service.ServiceControlManager
 import com.miseservice.msmms.service.SmsRestServer
@@ -71,4 +72,9 @@ object AppModule {
     @Singleton
     fun provideSimNetworkStatusProvider(@ApplicationContext context: Context): SimNetworkStatusProvider =
         SimNetworkStatusProvider(context)
+
+    @Provides
+    @Singleton
+    fun provideNetworkRepository(@ApplicationContext context: Context): NetworkRepository =
+        NetworkRepository(context)
 }

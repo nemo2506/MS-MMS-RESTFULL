@@ -35,6 +35,12 @@
     <string name="api_network_info_title">CONNEXION</string>
     <string name="network_not_connected">Non connectée</string>
     <string name="connected_ip_label">IP connectée</string>
+    <string name="ssid_label">SSID</string>
+    <string name="ssid_unavailable">SSID indisponible</string>
+    <string name="ssid_requires_location_permission">Autoriser la localisation pour lire le SSID</string>
+    <string name="ssid_requires_location_enabled">Activer la localisation pour lire le SSID</string>
+    <string name="ssid_hint_fine_location_required">Android 10+ requiert la permission de localisation PRÉCISE pour le SSID.</string>
+    <string name="ssid_hint_gps_required">Android 10+ requiert le GPS activé pour fournir le nom du réseau.</string>
     <string name="api_endpoints_title">ENDPOINTS</string>
     <string name="api_token_section_title">SÉCURITÉ</string>
     <!-- Dialogue état système -->
@@ -57,7 +63,7 @@
     <string name="network_copied">✅ Réseau copié</string>
     <string name="copied_in_clipboard">dans le press papier</string>
     <string name="endpoint_wifi_hint">Connectez-vous au Wi-Fi pour afficher les endpoints actifs.</string>
-    <string name="rest_port_label">Port API</string>
+    <string name="rest_port_label">Port</string>
     <string name="rest_port_hint">Ex. 8080</string>
     <string name="rest_port_required">Le port API est requis.</string>
     <string name="rest_port_invalid">Le port doit être un nombre entre 1 et 65535.</string>
@@ -204,20 +210,24 @@
     <string name="ble_status_found">Trouvé : %1$s</string>
     <string name="ble_status_not_found">Non trouvé</string>
     <string name="ble_status_connecting">Connexion...</string>
-    <string name="ble_status_connected">Connecté</string>
-    <string name="ble_status_invalid_pin">PIN incorrect</string>
-    <string name="ble_status_timeout">Délai de connexion écoulé</string>
-    <string name="ble_status_service_not_found">Service non trouvé</string>
-    <string name="ble_status_characteristic_not_found">Caractéristique non trouvée</string>
-    <string name="ble_status_error">Erreur : %1$s</string>
-    <string name="ble_status_disconnected">Déconnecté</string>
+    <string name="ble_status_connected">✅ Connecté</string>
+    <string name="ble_status_invalid_pin">❌ PIN incorrect</string>
+    <string name="ble_status_timeout">❌ Délai de connexion écoulé</string>
+    <string name="ble_status_service_not_found">❌ Service non trouvé</string>
+    <string name="ble_status_characteristic_not_found">❌ Caractéristique non trouvée</string>
+    <string name="ble_status_error">❌ Erreur : %1$s</string>
+    <string name="ble_status_disconnected">❌ Déconnecté</string>
     <string name="relay_command_sent">Commande relais envoyée</string>
-    <string name="relay_command_confirmed">Commande relais confirmée</string>
-    <string name="relay_command_failed">Échec commande relais</string>
+    <string name="relay_command_confirmed">✅ Commande relais confirmée</string>
+    <string name="relay_command_failed">❌ Échec commande relais</string>
     <string name="wifi_command_sent">Commande Wi-Fi envoyée</string>
-    <string name="wifi_command_confirmed">Commande Wi-Fi confirmée</string>
-    <string name="wifi_command_failed">Échec commande Wi-Fi</string>
+    <string name="wifi_command_confirmed">✅ Commande Wi-Fi confirmée</string>
+    <string name="wifi_command_failed">❌ Échec commande Wi-Fi</string>
     <string name="bluetooth_command_sent">Commande Bluetooth envoyée</string>
-    <string name="bluetooth_command_confirmed">Commande Bluetooth confirmée</string>
-    <string name="bluetooth_command_failed">Échec commande Bluetooth</string>
+    <string name="bluetooth_command_confirmed">✅ Commande Bluetooth confirmée</string>
+    <string name="bluetooth_command_failed">❌ Échec commande Bluetooth</string>
+
+    <!-- Startup -->
+    <string name="startup_permissions_message">Pour fonctionner correctement, l\'application nécessite les permissions SMS (envoi), Localisation (lecture SSID Wi-Fi), État du téléphone (réseau SIM), Bluetooth (gestion de la charge) et Notifications (statut du service).</string>
+    <string name="startup_permissions_title">Configuration nécessaire</string>
 </resources>

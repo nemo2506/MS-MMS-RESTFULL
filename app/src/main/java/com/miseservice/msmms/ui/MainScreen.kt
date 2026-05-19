@@ -7,7 +7,6 @@ import android.os.Build
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -47,12 +46,7 @@ import com.miseservice.msmms.ui.components.SendSmsSection
 import com.miseservice.msmms.ui.components.ServiceStatusRow
 import com.miseservice.msmms.ui.components.smsOvhButtonColors
 import com.miseservice.msmms.ui.components.smsOvhTextFieldColors
-import com.miseservice.msmms.ui.components.dialogs.LocationPermissionDeniedDialog
-import com.miseservice.msmms.ui.components.dialogs.LocationPermissionRequiredDialog
-import com.miseservice.msmms.ui.components.dialogs.BluetoothPermissionDeniedDialog
-import com.miseservice.msmms.ui.components.dialogs.BluetoothPermissionRequiredDialog
 import com.miseservice.msmms.ui.components.dialogs.PermissionActionDialog
-import com.miseservice.msmms.ui.components.dialogs.SmsPermissionDialog
 import com.miseservice.msmms.ui.components.dialogs.SystemStatusDialog
 import com.miseservice.msmms.util.NetworkInfoProvider
 import com.miseservice.msmms.viewmodel.FeedbackType
@@ -74,7 +68,7 @@ private data class MainTabItem(
 fun MainScreen(
     viewModel: MainViewModel,
     hasSendSmsPermission: () -> Boolean,
-    onRequestSmsPermission: () -> Unit,
+    onRequestSmsPermission: (forAction: Boolean) -> Unit,
     onSendSmsRequested: () -> Unit,
     onSmsRationaleAllow: (forSendAction: Boolean) -> Unit = {},
     onOpenAppSettings: () -> Unit = {},
@@ -92,18 +86,9 @@ fun MainScreen(
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
     val uiState = viewModel.uiState.collectAsState().value
-    val showLocationDeniedDialog = remember { mutableStateOf(false) }
-    val showBluetoothDeniedDialog = remember { mutableStateOf(false) }
-    val currentContext = rememberUpdatedState(LocalContext.current)
     var showBlePinDialog by rememberSaveable { mutableStateOf(false) }
     var blePinInput by rememberSaveable { mutableStateOf("") }
-    var showStartupSmsPrePrompt by rememberSaveable { mutableStateOf(false) }
-    var showStartupLocationPrePrompt by rememberSaveable { mutableStateOf(false) }
-    var showStartupBluetoothPrePrompt by rememberSaveable { mutableStateOf(false) }
-    var pendingStartupSms by rememberSaveable { mutableStateOf(false) }
-    var pendingStartupLocation by rememberSaveable { mutableStateOf(false) }
-    var pendingStartupBluetooth by rememberSaveable { mutableStateOf(false) }
-    val startupApprovedPermissions = remember { mutableStateListOf<String>() }
+    var showStartupPermissionsDialog by rememberSaveable { mutableStateOf(false) }
 
     // Externaliser la copie via le ViewModel (MVVM-compliant)
     val copyToClipboard: (String, String) -> Unit = { label, value ->
@@ -137,7 +122,6 @@ fun MainScreen(
         )
     )
     val selectedTabIndex = uiState.selectedTabIndex.coerceIn(0, tabs.lastIndex)
-    val activity = context as? android.app.Activity
 
     LaunchedEffect(uiState.serviceActive) {
         if (uiState.serviceActive) {
@@ -150,113 +134,17 @@ fun MainScreen(
         }
     }
 
-    // Gestion de la permission de localisation
-    val locationPermissionGranted = uiState.locationPermissionGranted
+    // Gestion des permissions
     val bluetoothGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED &&
-            ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
+                ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
     } else {
         true
     }
-    var showLocationDialog by rememberSaveable { mutableStateOf(false) }
-    var showBluetoothDialog by rememberSaveable { mutableStateOf(false) }
 
-    val bluetoothPermissions = remember {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            arrayOf(Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT)
-        } else {
-            emptyArray()
-        }
-    }
-
-    val startupPermissionsLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        val locationGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true
-        viewModel.setLocationPermissionGranted(locationGranted)
-        if (locationGranted) {
-            showLocationDialog = false
-            showLocationDeniedDialog.value = false
-        } else {
-            val shouldShowRationale = activity?.let {
-                ActivityCompat.shouldShowRequestPermissionRationale(it, Manifest.permission.ACCESS_FINE_LOCATION)
-            } == true
-            showLocationDialog = shouldShowRationale
-            showLocationDeniedDialog.value = !shouldShowRationale
-        }
-
-        val bluetoothNowGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            permissions[Manifest.permission.BLUETOOTH_SCAN] == true &&
-                permissions[Manifest.permission.BLUETOOTH_CONNECT] == true
-        } else {
-            true
-        }
-        if (bluetoothNowGranted) {
-            showBluetoothDialog = false
-            showBluetoothDeniedDialog.value = false
-        } else {
-            val shouldShowBluetoothRationale = activity?.let {
-                ActivityCompat.shouldShowRequestPermissionRationale(it, Manifest.permission.BLUETOOTH_SCAN) ||
-                    ActivityCompat.shouldShowRequestPermissionRationale(it, Manifest.permission.BLUETOOTH_CONNECT)
-            } == true
-            showBluetoothDialog = shouldShowBluetoothRationale
-            showBluetoothDeniedDialog.value = !shouldShowBluetoothRationale
-        }
-    }
-
-    val locationPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        viewModel.setLocationPermissionGranted(granted)
-        if (granted) {
-            showLocationDialog = false
-            showLocationDeniedDialog.value = false
-        } else {
-            val shouldShowRationale = activity?.let {
-                ActivityCompat.shouldShowRequestPermissionRationale(it, Manifest.permission.ACCESS_FINE_LOCATION)
-            } == true
-            showLocationDialog = shouldShowRationale
-            showLocationDeniedDialog.value = !shouldShowRationale
-        }
-    }
-
-    val bluetoothPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        val granted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            permissions[Manifest.permission.BLUETOOTH_SCAN] == true &&
-                permissions[Manifest.permission.BLUETOOTH_CONNECT] == true
-        } else {
-            true
-        }
-        if (granted) {
-            showBluetoothDialog = false
-            showBluetoothDeniedDialog.value = false
-        } else {
-            val shouldShowRationale = activity?.let {
-                ActivityCompat.shouldShowRequestPermissionRationale(it, Manifest.permission.BLUETOOTH_SCAN) ||
-                    ActivityCompat.shouldShowRequestPermissionRationale(it, Manifest.permission.BLUETOOTH_CONNECT)
-            } == true
-            showBluetoothDialog = shouldShowRationale
-            showBluetoothDeniedDialog.value = !shouldShowRationale
-        }
-    }
-
-    val proceedStartupPrePrompt: () -> Unit = {
-        showStartupSmsPrePrompt = false
-        showStartupLocationPrePrompt = false
-        showStartupBluetoothPrePrompt = false
-
-        when {
-            pendingStartupSms -> showStartupSmsPrePrompt = true
-            pendingStartupLocation -> showStartupLocationPrePrompt = true
-            pendingStartupBluetooth -> showStartupBluetoothPrePrompt = true
-            startupApprovedPermissions.isNotEmpty() -> {
-                startupPermissionsLauncher.launch(startupApprovedPermissions.toTypedArray())
-                startupApprovedPermissions.clear()
-            }
-        }
-    }
+    // Le workflow des permissions est désormais centralisé via MainActivity.
+    // L'UI réagit simplement aux changements d'états dans le ViewModel ou déclenche
+    // le dialogue de démarrage (StartupPermissionsDialog) si nécessaire.
 
     LaunchedEffect(Unit) {
         val locationGranted = ContextCompat.checkSelfPermission(
@@ -264,135 +152,41 @@ fun MainScreen(
             Manifest.permission.ACCESS_FINE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
         val smsGranted = hasSendSmsPermission()
+        val phoneStateGranted = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.READ_PHONE_STATE
+        ) == PackageManager.PERMISSION_GRANTED
+        val notificationGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+        } else {
+            true
+        }
 
         viewModel.setLocationPermissionGranted(locationGranted)
-        showLocationDialog = false
-        showBluetoothDialog = false
-        showLocationDeniedDialog.value = false
-        showBluetoothDeniedDialog.value = false
-        startupApprovedPermissions.clear()
 
-        pendingStartupSms = !smsGranted
-        pendingStartupLocation = !locationGranted
-        pendingStartupBluetooth = !bluetoothGranted
-        proceedStartupPrePrompt()
+        // Si une permission critique manque, on affiche le dialogue de groupe au démarrage
+        if (!locationGranted || !smsGranted || !phoneStateGranted || !bluetoothGranted || !notificationGranted) {
+            showStartupPermissionsDialog = true
+        }
     }
 
-    if (showStartupSmsPrePrompt) {
-        SmsPermissionDialog(
-            onConfirm = {
-                showStartupSmsPrePrompt = false
-                pendingStartupSms = false
-                if (!startupApprovedPermissions.contains(Manifest.permission.SEND_SMS)) {
-                    startupApprovedPermissions += Manifest.permission.SEND_SMS
-                }
-                proceedStartupPrePrompt()
-            },
-            onDismiss = {
-                showStartupSmsPrePrompt = false
-                pendingStartupSms = false
-                proceedStartupPrePrompt()
-            }
-        )
-    }
-
-    if (showStartupLocationPrePrompt) {
+    if (showStartupPermissionsDialog) {
         PermissionActionDialog(
-            title = stringResource(R.string.location_permission_required_title),
-            message = stringResource(R.string.location_permission_required_message),
+            title = stringResource(R.string.permission_required_title),
+            message = stringResource(R.string.startup_permissions_message),
             confirmLabel = stringResource(R.string.allow),
             onConfirm = {
-                showStartupLocationPrePrompt = false
-                pendingStartupLocation = false
-                if (!startupApprovedPermissions.contains(Manifest.permission.ACCESS_FINE_LOCATION)) {
-                    startupApprovedPermissions += Manifest.permission.ACCESS_FINE_LOCATION
-                }
-                proceedStartupPrePrompt()
+                showStartupPermissionsDialog = false
+                onRequestSmsPermission(false) // Déclenche le groupe complet via MainActivity
             },
             dismissLabel = stringResource(R.string.cancel),
-            onDismiss = {
-                showStartupLocationPrePrompt = false
-                pendingStartupLocation = false
-                proceedStartupPrePrompt()
-            },
-            onDismissRequest = {}
+            onDismiss = { showStartupPermissionsDialog = false },
+            onDismissRequest = { showStartupPermissionsDialog = false }
         )
     }
 
-    if (showStartupBluetoothPrePrompt && bluetoothPermissions.isNotEmpty()) {
-        PermissionActionDialog(
-            title = stringResource(R.string.bluetooth_permission_required_title),
-            message = stringResource(R.string.bluetooth_permission_required_message),
-            confirmLabel = stringResource(R.string.allow),
-            onConfirm = {
-                showStartupBluetoothPrePrompt = false
-                pendingStartupBluetooth = false
-                bluetoothPermissions.forEach { permission ->
-                    if (!startupApprovedPermissions.contains(permission)) {
-                        startupApprovedPermissions += permission
-                    }
-                }
-                proceedStartupPrePrompt()
-            },
-            dismissLabel = stringResource(R.string.cancel),
-            onDismiss = {
-                showStartupBluetoothPrePrompt = false
-                pendingStartupBluetooth = false
-                proceedStartupPrePrompt()
-            },
-            onDismissRequest = {}
-        )
-    }
-
-    if (showLocationDialog && activity != null) {
-        LocationPermissionRequiredDialog(
-            onAllow = { locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION) },
-            onOpenSettings = {
-                val intent =
-                    android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-                intent.data = ("package:" + context.packageName).toUri()
-                context.startActivity(intent)
-            }
-        )
-    }
-
-    if (showLocationDeniedDialog.value) {
-        LocationPermissionDeniedDialog(
-            onOpenSettings = {
-                showLocationDeniedDialog.value = false
-                val intent =
-                    android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-                intent.data = ("package:" + context.packageName).toUri()
-                context.startActivity(intent)
-            },
-            onDismiss = { showLocationDeniedDialog.value = false }
-        )
-    }
-
-    if (showBluetoothDialog && activity != null && bluetoothPermissions.isNotEmpty()) {
-        BluetoothPermissionRequiredDialog(
-            onAllow = { bluetoothPermissionLauncher.launch(bluetoothPermissions) },
-            onOpenSettings = {
-                val intent =
-                    android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-                intent.data = ("package:" + context.packageName).toUri()
-                context.startActivity(intent)
-            }
-        )
-    }
-
-    if (showBluetoothDeniedDialog.value) {
-        BluetoothPermissionDeniedDialog(
-            onOpenSettings = {
-                showBluetoothDeniedDialog.value = false
-                val intent =
-                    android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-                intent.data = ("package:" + context.packageName).toUri()
-                context.startActivity(intent)
-            },
-            onDismiss = { showBluetoothDeniedDialog.value = false }
-        )
-    }
+    // Le flux principal de permissions passe par StartupPermissionsDialog -> checkAndRequestPermissions()
+    // Les dialogues spécifiques (SMS, Batterie) sont pilotés par le ViewModel.
 
     // Dialogues SMS refus (rationale / refus permanent) pilotés par le ViewModel
     val smsDeniedMode = uiState.smsDeniedDialogMode
@@ -510,9 +304,9 @@ fun MainScreen(
     }
 
     // Récupération de la localisation réseau (externaliser via ViewModel)
-    val locationData = uiState.locationData
-    LaunchedEffect(locationPermissionGranted) {
-        if (locationPermissionGranted) {
+
+    LaunchedEffect(uiState.locationPermissionGranted) {
+        if (uiState.locationPermissionGranted) {
             viewModel.fetchCurrentLocation()
         }
     }
@@ -677,7 +471,7 @@ fun MainScreen(
                             SendSmsSection(
                                 enabled = uiState.canSendLocalSms,
                                 hasSendSmsPermission = hasSendSmsPermission,
-                                onRequestSmsPermission = onRequestSmsPermission,
+                                onRequestSmsPermission = { onRequestSmsPermission(true) },
                                 onSendSmsRequested = onSendSmsRequested
                             )
                         }
@@ -725,40 +519,6 @@ fun MainScreen(
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // En-tête statut réseau (copiable)
-                    val networkLine =
-                        "${context.getString(R.string.network_label)} ${if (uiState.isIpValid) "🟢" else "🔴"}"
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { copyToClipboard("network", networkLine) },
-                        shape = MaterialTheme.shapes.medium,
-                        colors = CardDefaults.cardColors(
-                            containerColor = if (uiState.isIpValid)
-                                colorResource(id = R.color.smsovh_primary).copy(alpha = 0.12f)
-                            else
-                                MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.30f)
-                        )
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = networkLine,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = colorResource(id = R.color.white),
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Icon(
-                                imageVector = Icons.Outlined.SettingsEthernet,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp),
-                                tint = colorResource(id = R.color.white).copy(alpha = 0.7f)
-                            )
-                        }
-                    }
                     ElevatedCard(
                         modifier = Modifier.fillMaxWidth(),
                         shape = MaterialTheme.shapes.large
@@ -767,8 +527,6 @@ fun MainScreen(
                             ApiNetworkSection(
                                 uiState = uiState,
                                 token = token,
-                                locationPermissionGranted = locationPermissionGranted,
-                                locationData = locationData,
                                 onRestPortInputChange = { viewModel.setRestPortInput(it) },
                                 onRestPortCommit = {
                                     if (viewModel.commitRestPort()) {
@@ -776,7 +534,8 @@ fun MainScreen(
                                     }
                                 },
                                 onResetToken = { viewModel.resetToken() },
-                                onCopy = copyToClipboard
+                                onCopy = copyToClipboard,
+                                onRefreshNetwork = { viewModel.refreshNetworkInfo() }
                             )
                         }
                     }
