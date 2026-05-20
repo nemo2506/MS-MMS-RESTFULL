@@ -32,6 +32,31 @@ Ce document decrit l'integration entre :
 - Selon les seuils Min/Max, il bascule la sortie (`/api/power/[PIN]`).
 - Le MOS ESP32 commute la ligne de commande du gestionnaire de charge.
 
+## Plan de déploiement (Workflow)
+
+```mermaid
+flowchart TD
+    A["🔌 ÉTAPE 1 : DÉMARRER MOS ESP32<br/>Brancher USB ou alimentation 5V"] --> B["📡 ÉTAPE 2 : LANCER WPS SUR MODEM<br/>Appuyer 3-5 sec sur bouton WPS<br/>(faire vite, WPS démarre automatiquement)"]
+    B --> C["⏳ ÉTAPE 3 : Attendre Connexion WiFi<br/>~5-10 secondes pour l'association"]
+    C --> D["✅ ÉTAPE 4 : Vérifier Connexion WiFi<br/>IP addressée • mDNS enregistré"]
+    D --> E{ÉTAPE 5 : Monitoring<br/>avant lancement app ?}
+    E -->|OUI| F["🖥️ OPTIONNEL : MONITORER avec IDE ARDUINO<br/>Ctrl+Maj+M • 115200 baud<br/>Vérifier logs WPS • IP • mDNS"]
+    E -->|NON| G["📱 ÉTAPE 6 : LANCER APPLICATION Android<br/>MS-OVH-SMS • Onglet Power"]
+    F --> G
+    G --> H["⚙️ ÉTAPE 7 : Configurer Paramètres<br/>URL : http://POWER_SWITCH.local<br/>Port • PIN • Token • Min/Max"]
+    H --> I["🧪 ÉTAPE 8 : Tester Connexion API<br/>Cliquer STATUS • puis POWER<br/>Vérifier réponses JSON"]
+    I --> J["▶️ ÉTAPE 9 : Lancer l'AUTOMATION<br/>Cycle 60 secondes démarré<br/>Logs sur console USB-TTL"]
+    J --> K["🔋 SUCCÈS ✨<br/>Charge/Décharge gérée automatiquement<br/>Batterie en santé optimale"]
+    
+    style A fill:#ff6666,stroke:#333,stroke-width:2px,color:#000
+    style B fill:#ffaa44,stroke:#333,stroke-width:2px,color:#000
+    style D fill:#66bb6a,stroke:#333,stroke-width:2px,color:#000
+    style F fill:#64b5f6,stroke:#333,stroke-width:2px,color:#000
+    style G fill:#ba68c8,stroke:#333,stroke-width:2px,color:#000
+    style J fill:#66bb6a,stroke:#333,stroke-width:2px,color:#000
+    style K fill:#4caf50,stroke:#333,stroke-width:3px,color:#fff
+```
+
 ## Captures (screenShots)
 
 | Interface Android                                              | ARDUINO IDE                                                          |
@@ -87,6 +112,38 @@ Cette integration s'appuie sur deux appareils physiques :
 3. Brancher le **MOS-ESP32-UART** sur la ligne de commande du gestionnaire de charge.
 4. Configurer l'app Android (`URL`, `PIN`, `token`, seuils `MIN/MAX`).
 5. Verifier les reponses API `STATUS` puis `POWER`.
+
+## USAGE:
+
+1. **Demarrer MOS ESP32**
+   - Brancher l'ESP32 sur une source d'alimentation USB (adaptateur USB-TTL ou direct USB-C selon le modele).
+   - Le module va demarrer le protocole WPS (attendre ~5-10 secondes).
+
+2. **Lancer WPS sur MODEM**
+   - Appuyer sur le bouton WPS du routeur/MODEM (gardez-le enfonce pendant 3-5 secondes).
+   - L'ESP32 va se connecter automatiquement au reseau Wi-Fi.
+   - Verifier la connexion dans le moniteur serie (IP affichee).
+
+3. **(OPTION) MONITORER avec IDE ( ARDUINO )**
+   - Ouvrir Arduino IDE et selectionner la connexion serie de l'USB-TTL.
+   - Aller dans **Outils → Moniteur serie** (ou `Ctrl + Shift + M`).
+   - Configurer la vitesse : **115200 baud**.
+   - Observer les logs de boot, WPS, connexion WiFi et mDNS en temps reel.
+   - Verifier que le token Bearer et les endpoints sont corrects.
+
+4. **Lancer l'appli**
+   - Ouvrir l'application **MS-OVH-SMS** sur le telephone Android.
+   - Acceder a l'onglet **Power**.
+   - Entrer les parametres:
+     - **URL** : `http://POWER_SWITCH.local` (ou l'IP detectee automatiquement)
+     - **Port** : `80` (par defaut)
+     - **PIN** : le numero GPIO configure sur l'ESP32 (ex: `4`)
+     - **Token** : le Bearer token du firmware (ex: `6ec3a985e5084bd0889e77c6cd1f81de`)
+     - **Min** : niveau batterie minimum avant charge (ex: `20%`)
+     - **Max** : niveau batterie maximum avant arret (ex: `80%`)
+   - Tester manuellement les boutons **STATUS** et **POWER** pour verifier la connexion.
+   - Lancer le cycle automatique (**Start Automation**).
+   - Observer les logs sur l'USB-TTL pour valider les appels API.
 
 ## Commandes Firmware ESP32 (REST API)
 
