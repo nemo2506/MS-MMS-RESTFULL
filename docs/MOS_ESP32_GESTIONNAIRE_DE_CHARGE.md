@@ -230,6 +230,30 @@ curl -X POST "http://POWER_SWITCH.local/"
 
 ## Firmware ESP32 (REST API)
 
+### Utilité
+
+Ce firmware transforme l'ESP32 en **serveur REST sécurisé** pour piloter à distance les sorties GPIO. Il permet à l'application Android (MS-OVH-SMS) de :
+
+- **Interroger l'état** d'une sortie GPIO en temps réel (`/api/status/[PIN]`)
+- **Basculer (toggle)** une sortie GPIO pour ouvrir/fermer le gestionnaire de charge (`/api/power/[PIN]`)
+- **Synchroniser** l'état matériel avec la logique métier du téléphone
+
+### Caractéristiques principales
+
+| Caractéristique | Détail |
+|---|---|
+| **Authentification** | Bearer Token (header `Authorization: Bearer <TOKEN>`) — 401 si absent/invalide |
+| **Connexion WiFi** | WPS PBC (Push Button) — association automatique au démarrage |
+| **Découverte Réseau** | mDNS — accessible via `http://POWER_SWITCH.local` |
+| **Endpoints HTTP** | `POST /api/power/[PIN]` • `POST /api/status/[PIN]` • `POST /` (info) |
+| **Sécurité GPIO** | Whitelist de PINs autorisées (4, 5, 12-19, 21-23, 25-27, 32-33) |
+| **Codes HTTP** | 200 (OK), 400 (format), 401 (auth), 403 (PIN interdite), 404 (endpoint), 405 (méthode) |
+| **Débit Série** | 115200 baud — logs détaillés [WiFi], [WPS], [AUTH], [POWER], [STATUS] |
+| **LED Diagnostic** | GPIO2 — clignote si erreur WPS, fixe si connecté |
+| **Résilience** | Reconnexion automatique si perte WiFi • Watchdog intégré |
+
+### Code source complet
+
 ```cpp
 /*
  * ESP32 REST API - GPIO Control via HTTP
