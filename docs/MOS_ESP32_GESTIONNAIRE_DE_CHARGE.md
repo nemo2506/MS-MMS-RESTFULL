@@ -116,34 +116,35 @@ Cette integration s'appuie sur deux appareils physiques :
 ## USAGE:
 
 1. **Demarrer MOS ESP32**
-   - Brancher l'ESP32 sur une source d'alimentation USB (adaptateur USB-TTL ou direct USB-C selon le modele).
-   - Le module va demarrer le protocole WPS (attendre ~5-10 secondes).
+    - Brancher l'ESP32 sur une source d'alimentation USB (adaptateur USB-TTL ou direct USB-C selon
+      le modele).
+    - Le module va demarrer le protocole WPS (attendre ~5-10 secondes).
 
 2. **Lancer WPS sur MODEM**
-   - Appuyer sur le bouton WPS du routeur/MODEM (gardez-le enfonce pendant 3-5 secondes).
-   - L'ESP32 va se connecter automatiquement au reseau Wi-Fi.
-   - Verifier la connexion dans le moniteur serie (IP affichee).
+    - Appuyer sur le bouton WPS du routeur/MODEM (gardez-le enfonce pendant 3-5 secondes).
+    - L'ESP32 va se connecter automatiquement au reseau Wi-Fi.
+    - Verifier la connexion dans le moniteur serie (IP affichee).
 
 3. **(OPTION) MONITORER avec IDE ( ARDUINO )**
-   - Ouvrir Arduino IDE et selectionner la connexion serie de l'USB-TTL.
-   - Aller dans **Outils → Moniteur serie** (ou `Ctrl + Shift + M`).
-   - Configurer la vitesse : **115200 baud**.
-   - Observer les logs de boot, WPS, connexion WiFi et mDNS en temps reel.
-   - Verifier que le token Bearer et les endpoints sont corrects.
+    - Ouvrir Arduino IDE et selectionner la connexion serie de l'USB-TTL.
+    - Aller dans **Outils → Moniteur serie** (ou `Ctrl + Shift + M`).
+    - Configurer la vitesse : **115200 baud**.
+    - Observer les logs de boot, WPS, connexion WiFi et mDNS en temps reel.
+    - Verifier que le token Bearer et les endpoints sont corrects.
 
 4. **Lancer l'appli**
-   - Ouvrir l'application **MS-OVH-SMS** sur le telephone Android.
-   - Acceder a l'onglet **Power**.
-   - Entrer les parametres:
-     - **URL** : `http://POWER_SWITCH.local` (ou l'IP detectee automatiquement)
-     - **Port** : `80` (par defaut)
-     - **PIN** : le numero GPIO configure sur l'ESP32 (ex: `4`)
-     - **Token** : le Bearer token du firmware (ex: `6ec3a985e5084bd0889e77c6cd1f81de`)
-     - **Min** : niveau batterie minimum avant charge (ex: `20%`)
-     - **Max** : niveau batterie maximum avant arret (ex: `80%`)
-   - Tester manuellement les boutons **STATUS** et **POWER** pour verifier la connexion.
-   - Lancer le cycle automatique (**Start Automation**).
-   - Observer les logs sur l'USB-TTL pour valider les appels API.
+    - Ouvrir l'application **MS-OVH-SMS** sur le telephone Android.
+    - Acceder a l'onglet **Power**.
+    - Entrer les parametres:
+        - **URL** : `http://POWER_SWITCH.local` (ou l'IP detectee automatiquement)
+        - **Port** : `80` (par defaut)
+        - **PIN** : le numero GPIO configure sur l'ESP32 (ex: `4`)
+        - **Token** : le Bearer token du firmware (ex: `6ec3a985e5084bd0889e77c6cd1f81de`)
+        - **Min** : niveau batterie minimum avant charge (ex: `20%`)
+        - **Max** : niveau batterie maximum avant arret (ex: `80%`)
+    - Tester manuellement les boutons **STATUS** et **POWER** pour verifier la connexion.
+    - Lancer le cycle automatique (**Start Automation**).
+    - Observer les logs sur l'USB-TTL pour valider les appels API.
 
 ## Commandes Firmware ESP32 (REST API)
 
@@ -232,25 +233,27 @@ curl -X POST "http://POWER_SWITCH.local/"
 
 ### Utilité
 
-Ce firmware transforme l'ESP32 en **serveur REST sécurisé** pour piloter à distance les sorties GPIO. Il permet à l'application Android (MS-OVH-SMS) de :
+Ce firmware transforme l'ESP32 en **serveur REST sécurisé** pour piloter à distance les sorties
+GPIO. Il permet à l'application Android (MS-OVH-SMS) de :
 
 - **Interroger l'état** d'une sortie GPIO en temps réel (`/api/status/[PIN]`)
-- **Basculer (toggle)** une sortie GPIO pour ouvrir/fermer le gestionnaire de charge (`/api/power/[PIN]`)
+- **Basculer (toggle)** une sortie GPIO pour ouvrir/fermer le gestionnaire de charge (
+  `/api/power/[PIN]`)
 - **Synchroniser** l'état matériel avec la logique métier du téléphone
 
 ### Caractéristiques principales
 
-| Caractéristique | Détail |
-|---|---|
-| **Authentification** | Bearer Token (header `Authorization: Bearer <TOKEN>`) — 401 si absent/invalide |
-| **Connexion WiFi** | WPS PBC (Push Button) — association automatique au démarrage |
-| **Découverte Réseau** | mDNS — accessible via `http://POWER_SWITCH.local` |
-| **Endpoints HTTP** | `POST /api/power/[PIN]` • `POST /api/status/[PIN]` • `POST /` (info) |
-| **Sécurité GPIO** | Whitelist de PINs autorisées (4, 5, 12-19, 21-23, 25-27, 32-33) |
-| **Codes HTTP** | 200 (OK), 400 (format), 401 (auth), 403 (PIN interdite), 404 (endpoint), 405 (méthode) |
-| **Débit Série** | 115200 baud — logs détaillés [WiFi], [WPS], [AUTH], [POWER], [STATUS] |
-| **LED Diagnostic** | GPIO2 — clignote si erreur WPS, fixe si connecté |
-| **Résilience** | Reconnexion automatique si perte WiFi • Watchdog intégré |
+| Caractéristique       | Détail                                                                                 |
+|-----------------------|----------------------------------------------------------------------------------------|
+| **Authentification**  | Bearer Token (header `Authorization: Bearer <TOKEN>`) — 401 si absent/invalide         |
+| **Connexion WiFi**    | WPS PBC (Push Button) — association automatique au démarrage                           |
+| **Découverte Réseau** | mDNS — accessible via `http://POWER_SWITCH.local`                                      |
+| **Endpoints HTTP**    | `POST /api/power/[PIN]` • `POST /api/status/[PIN]` • `POST /` (info)                   |
+| **Sécurité GPIO**     | Whitelist de PINs autorisées (4, 5, 12-19, 21-23, 25-27, 32-33)                        |
+| **Codes HTTP**        | 200 (OK), 400 (format), 401 (auth), 403 (PIN interdite), 404 (endpoint), 405 (méthode) |
+| **Débit Série**       | 115200 baud — logs détaillés [WiFi], [WPS], [AUTH], [POWER], [STATUS]                  |
+| **LED Diagnostic**    | GPIO2 — clignote si erreur WPS, fixe si connecté                                       |
+| **Résilience**        | Reconnexion automatique si perte WiFi • Watchdog intégré                               |
 
 ### Code source complet
 
@@ -283,7 +286,8 @@ Ce firmware transforme l'ESP32 en **serveur REST sécurisé** pour piloter à di
 // ─── Configuration ────────────────────────────────────────────────────────────
 #define WPS_TIMEOUT_MS   60000
 
-const int ALLOWED_PINS[] = {4, 5, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23, 25, 26, 27, 32, 33};
+// OUTPUT: 16, 17, 26, 27 LED: 23
+const int ALLOWED_PINS[] = {16, 17, 26, 27, 23};
 const int ALLOWED_PINS_COUNT = sizeof(ALLOWED_PINS) / sizeof(ALLOWED_PINS[0]);
 
 // ─── Globals ──────────────────────────────────────────────────────────────────
