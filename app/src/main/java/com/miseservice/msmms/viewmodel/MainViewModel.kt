@@ -503,11 +503,16 @@ class MainViewModel @Inject constructor(
                 isNetworkLoading = false
             )
 
-            // Relance la découverte uniquement quand le Wi-Fi est disponible et qu'aucun job n'est en cours.
+            // Relance la découverte UNIQUEMENT si :
+            // 1. Wi-Fi est disponible
+            // 2. L'URL n'est pas déjà une IPv4
+            // 3. L'IP n'est PAS déjà résolue et en cache (optimisation batterie en veille)
+            // 4. Aucun job de découverte n'est en cours
             val currentPowerUrl = normalizePowerUrl(_uiState.value.powerBaseUrl).ifBlank { defaultPowerUrl() }
             if (
                 snapshot.isWifiConnected &&
                 shouldDiscoverPowerIp(currentPowerUrl) &&
+                _uiState.value.powerResolvedIp.isNullOrBlank() &&  // ← NE redécouvrir que si pas en cache
                 powerIpDiscoveryJob?.isActive != true
             ) {
                 schedulePowerIpDiscovery()

@@ -31,7 +31,6 @@ import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -51,7 +50,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -60,11 +58,9 @@ import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
-import com.miseservice.msmms.BuildConfig
 import com.miseservice.msmms.R
 import com.miseservice.msmms.ui.components.ApiNetworkSection
 import com.miseservice.msmms.ui.components.OvhApiConfigSection
@@ -618,8 +614,17 @@ fun MainScreen(
                                     colors = smsOvhTextFieldColors(),
                                     modifier = Modifier.fillMaxWidth()
                                 )
-
-                                // NIVEAU — Min & Max sur une ligne
+                            }
+                        }
+                        // ── Battery Level─────────────────────────────────────
+                        ElevatedCard(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = MaterialTheme.shapes.large
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
                                 Text(
                                     text = stringResource(R.string.power_battery_level_label),
                                     style = MaterialTheme.typography.labelLarge,
@@ -649,89 +654,7 @@ fun MainScreen(
                                         modifier = Modifier.weight(1f)
                                     )
                                 }
-                            }
-                        }
-
-                        // ── Carte Endpoints ─────────────────────────────────────
-                        ElevatedCard(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = MaterialTheme.shapes.large
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.power_endpoints_title),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = colorResource(id = R.color.smsovh_primary),
-                                    fontWeight = FontWeight.Bold
-                                )
-
-                                val pin = uiState.powerSwitchNumber.trim()
-                                    .ifBlank { BuildConfig.API_CHARGE_PIN }
-                                val baseUrl =
-                                    uiState.powerBaseUrl.trim().ifBlank { BuildConfig.API_BASE_URL }
-                                val displayBaseUrl =
-                                    if (baseUrl.startsWith("http://") || baseUrl.startsWith("https://")) {
-                                        baseUrl.trimEnd('/')
-                                    } else {
-                                        "http://${baseUrl.trimEnd('/')}"
-                                    }
-                                val statusEndpoint =
-                                    BuildConfig.API_ENDPOINT_STATUS.replace("[PIN]", pin)
-                                val powerEndpoint =
-                                    BuildConfig.API_ENDPOINT_POWER.replace("[PIN]", pin)
-
-                                // STATUS endpoint
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    Text(
-                                        text = stringResource(R.string.power_endpoint_status_label),
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = colorResource(id = R.color.smsovh_primary),
-                                        fontWeight = FontWeight.SemiBold,
-                                        modifier = Modifier.width(56.dp)
-                                    )
-                                    Text(
-                                        text = "$displayBaseUrl$statusEndpoint",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 2,
-                                        overflow = TextOverflow.Ellipsis,
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                }
-
-                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-
-                                // POWER endpoint
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    Text(
-                                        text = stringResource(R.string.power_endpoint_power_label),
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = colorResource(id = R.color.smsovh_primary),
-                                        fontWeight = FontWeight.SemiBold,
-                                        modifier = Modifier.width(56.dp)
-                                    )
-                                    Text(
-                                        text = "$displayBaseUrl$powerEndpoint",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 2,
-                                        overflow = TextOverflow.Ellipsis,
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                }
-
-
+                                Spacer(modifier = Modifier.height(8.dp))
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween
@@ -748,20 +671,30 @@ fun MainScreen(
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
+                            }
+                        }
+                        ElevatedCard(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = MaterialTheme.shapes.large
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
 
-                                uiState.powerLastAction?.let { action ->
+                                uiState.powerStatusState?.let { status ->
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
                                         Text(
-                                            text = stringResource(R.string.power_last_action_label),
+                                            text = stringResource(R.string.power_endpoint_status_label),
                                             style = MaterialTheme.typography.labelMedium,
                                             color = colorResource(id = R.color.smsovh_primary),
                                             fontWeight = FontWeight.SemiBold
                                         )
                                         Text(
-                                            text = action,
+                                            text = status,
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )

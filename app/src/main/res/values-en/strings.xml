@@ -48,7 +48,7 @@
     <string name="system_status_dialog_subtitle">One or more conditions are required for proper operation.</string>
     <string name="system_status_service">REST service active</string>
     <string name="system_status_network">Wi-Fi network connected</string>
-    <string name="system_status_chargeur">POWER MANAGER connected</string>
+    <string name="system_status_chargeur">Power Manager connected</string>
     <string name="system_status_sim">SIM network available</string>
     <string name="system_status_vu">GOT IT</string>
     <string name="endpoint_send_label">POST /api/send-message</string>
@@ -206,7 +206,7 @@
     <string name="power_endpoint_power_label">POWER</string>
     <string name="power_charge_button">CHARGE</string>
     <string name="power_status_label">STATE</string>
-    <string name="power_device_battery_label">PHONE BATTERY</string>
+    <string name="power_device_battery_label">BATTERY</string>
     <string name="power_last_action_label">ACTION</string>
     <string name="power_reset_discovery_button">IP DISCOVERY</string>
 

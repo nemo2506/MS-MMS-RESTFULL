@@ -48,7 +48,7 @@
     <string name="system_status_dialog_subtitle">Une ou plusieurs conditions sont requises pour le bon fonctionnement.</string>
     <string name="system_status_service">Service REST actif</string>
     <string name="system_status_network">Réseau Wi-Fi connecté</string>
-    <string name="system_status_chargeur">POWER MANAGER connecté</string>
+    <string name="system_status_chargeur">Gestion de Charge connecté</string>
     <string name="system_status_sim">Réseau SIM disponible</string>
     <string name="system_status_vu">VU</string>
     <string name="endpoint_send_label">POST /api/send-message</string>
@@ -200,7 +200,7 @@
     <string name="power_endpoint_power_label">POWER</string>
     <string name="power_charge_button">CHARGE</string>
     <string name="power_status_label">ETAT</string>
-    <string name="power_device_battery_label">BATTERIE TEL</string>
+    <string name="power_device_battery_label">BATTERIE</string>
     <string name="power_last_action_label">ACTION</string>
     <string name="power_reset_discovery_button">DECOUVERTE IP</string>
 
