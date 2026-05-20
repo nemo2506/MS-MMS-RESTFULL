@@ -122,14 +122,14 @@ graph LR
     GND_USB -->|PRIORITAIRE| GND_ESP
     VCC -->|Référence| VCC_ESP
     
-    style RX fill:#ff9999
-    style TX fill:#ff9999
-    style GND_USB fill:#ffcc99
-    style VCC fill:#99ff99
-    style GPIO3 fill:#99ccff
-    style GPIO1 fill:#99ccff
-    style GND_ESP fill:#ffcc99
-    style VCC_ESP fill:#99ff99
+    style RX fill:#ff9999,color:#000
+    style TX fill:#ff9999,color:#000
+    style GND_USB fill:#ffcc99,color:#000
+    style VCC fill:#99ff99,color:#000
+    style GPIO3 fill:#99ccff,color:#000
+    style GPIO1 fill:#99ccff,color:#000
+    style GND_ESP fill:#ffcc99,color:#000
+    style VCC_ESP fill:#99ff99,color:#000
 ```
 
 ### 2) Module MOS-ESP32-UART
