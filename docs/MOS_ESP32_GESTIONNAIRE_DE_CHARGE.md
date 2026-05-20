@@ -36,7 +36,7 @@ Ce document decrit l'integration entre :
 
 | Interface Android | Hardware ESP32 |
 |---|---|
-| ![VUE POWER](../screenShots/5.%20VUE%20POWER_1.png "Onglet Power") | ![ARDUINO IDE](../screenShots/6.%20ARDUINO%20IDE_1.png "Code ESP32") |
+| ![VUE POWER](<../screenShots/5. VUE POWER_1.png> "Onglet Power") | ![ARDUINO IDE](../screenShots/6.%20ARDUINO%20IDE_1.png "Code ESP32") |
 
 ## Materiel achete sur AliExpress
 
@@ -464,29 +464,6 @@ void loop() {
     WiFi.reconnect();
     delay(5000);
   }
-}
-```
-
-## Exemples de reponses
-
-STATUS:
-
-```json
-{
-  "pin": 4,
-  "state": "LOW",
-  "value": 0
-}
-```
-
-POWER:
-
-```json
-{
-  "pin": 4,
-  "state": "HIGH",
-  "value": 1,
-  "action": "toggled"
 }
 ```
 
