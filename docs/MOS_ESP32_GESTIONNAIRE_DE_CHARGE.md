@@ -34,8 +34,8 @@ Ce document decrit l'integration entre :
 
 ## Captures (screenShots)
 
-| Interface Android | Hardware ESP32 |
-|---|---|
+| Interface Android                                              | ARDUINO IDE                                                          |
+|----------------------------------------------------------------|----------------------------------------------------------------------|
 | ![VUE POWER](<../screenShots/5. VUE POWER.png> "Onglet Power") | ![ARDUINO IDE](../screenShots/6.%20ARDUINO%20IDE_1.png "Code ESP32") |
 
 ## Materiel achete sur AliExpress
@@ -45,8 +45,8 @@ Cette integration s'appuie sur deux appareils physiques :
 - un adaptateur **USB-TTL** pour le flash et le debug serie,
 - un module **MOS-ESP32-UART** pour le pilotage relais du gestionnaire de charge.
 
-| USB-TTL | MOS-ESP32-UART |
-|---|---|
+| USB-TTL                                                               | MOS-ESP32-UART                                                               |
+|-----------------------------------------------------------------------|------------------------------------------------------------------------------|
 | ![USB-TTL](../screenShots/USB-TTL.png "Adaptateur USB vers UART TTL") | ![MOS-ESP32-UART](../screenShots/MOS-ESP32-UART.png "Module MOS ESP32 UART") |
 
 ### 1) Adaptateur USB-TTL
