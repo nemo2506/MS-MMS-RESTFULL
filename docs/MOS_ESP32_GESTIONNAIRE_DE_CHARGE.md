@@ -36,7 +36,7 @@ Ce document decrit l'integration entre :
 
 | Interface Android | Hardware ESP32 |
 |---|---|
-| ![VUE POWER](<../screenShots/5. VUE POWER_1.png> "Onglet Power") | ![ARDUINO IDE](../screenShots/6.%20ARDUINO%20IDE_1.png "Code ESP32") |
+| ![VUE POWER](<../screenShots/5. VUE POWER.png> "Onglet Power") | ![ARDUINO IDE](../screenShots/6.%20ARDUINO%20IDE_1.png "Code ESP32") |
 
 ## Materiel achete sur AliExpress
 
