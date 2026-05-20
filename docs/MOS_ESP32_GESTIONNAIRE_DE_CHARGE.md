@@ -86,6 +86,52 @@ Cette integration s'appuie sur deux appareils physiques :
 - Chargement du firmware REST (`/api/power/[PIN]`, `/api/status/[PIN]`).
 - Diagnostic rapide en cas d'echec WPS, mDNS ou token Bearer invalide.
 
+**Schéma de branchement**
+
+![BRANCHEMENT USB-TTL](../screenShots/BRANCHEMENT-USB-TTL.jpg "Connexions USB-TTL vers ESP32")
+
+| Connecteur USB-TTL | → | Port ESP32 | Description |
+|---|---|---|---|
+| **RX** (entrée) | → | **TX** (GPIO1) | Données reçues par l'adaptateur |
+| **TX** (sortie) | → | **RX** (GPIO3) | Données transmises par l'adaptateur |
+| **GND** (masse) | → | **GND** | Masse commune (impératif) |
+| **3.3V** (alimentation) | → | **3.3V** | Référence logique TTL |
+
+⚠️ **Important** : Respecter strictement les échanges **RX↔TX** (croisement) et connecter **GND** en priorité pour éviter les dommages.
+
+**Visualisation des connexions (Mermaid)**
+
+```mermaid
+graph LR
+    subgraph USB["🔌 Adaptateur USB-TTL"]
+        RX["RX<br/>(Entrée)"]
+        TX["TX<br/>(Sortie)"]
+        GND_USB["GND<br/>(Masse)"]
+        VCC["3.3V<br/>(Alimentation)"]
+    end
+    
+    subgraph ESP["🔧 Module ESP32"]
+        GPIO3["GPIO3<br/>RX"]
+        GPIO1["GPIO1<br/>TX"]
+        GND_ESP["GND<br/>(Masse)"]
+        VCC_ESP["3.3V<br/>(Alimentation)"]
+    end
+    
+    RX -->|Croisement| GPIO1
+    TX -->|Croisement| GPIO3
+    GND_USB -->|PRIORITAIRE| GND_ESP
+    VCC -->|Référence| VCC_ESP
+    
+    style RX fill:#ff9999
+    style TX fill:#ff9999
+    style GND_USB fill:#ffcc99
+    style VCC fill:#99ff99
+    style GPIO3 fill:#99ccff
+    style GPIO1 fill:#99ccff
+    style GND_ESP fill:#ffcc99
+    style VCC_ESP fill:#99ff99
+```
+
 ### 2) Module MOS-ESP32-UART
 
 **Role principal**
