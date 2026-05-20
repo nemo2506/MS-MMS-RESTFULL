@@ -32,12 +32,15 @@ class AndroidServiceControlManager @Inject constructor(
             Intent(context, SmsOvhForegroundService::class.java)
         )
 
+        // On démarre le serveur. S'il échoue, on laisse le service tourner ou on gère
+        // l'arrêt de manière asynchrone pour éviter l'ANR de transition.
         val serverStarted = smsRestServer.startServer()
         started = serverStarted
 
         if (!serverStarted) {
-            // Si le bind du port echoue, on evite de garder un foreground service incoherent.
-            context.stopService(Intent(context, SmsOvhForegroundService::class.java))
+            // On ne stopService pas immédiatement pour éviter l'ANR (promesse non tenue).
+            // L'état d'erreur est déjà géré par smsRestServer via des événements UI.
+            started = false
         }
     }
 

@@ -5,11 +5,16 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.location.LocationManager
 import android.net.ConnectivityManager
+import android.net.Network
 import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import android.net.wifi.WifiInfo
 import android.net.wifi.WifiManager
 import android.os.Build
 import androidx.core.content.ContextCompat
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import java.net.Inet4Address
 import java.net.NetworkInterface
 
@@ -29,6 +34,52 @@ data class NetworkSnapshot(
 )
 
 class NetworkRepository(private val context: Context) {
+
+    /**
+     * Flux des changements de connectivite (temps reel, sans polling).
+     */
+    fun observeConnectivityChanges(): Flow<Unit> = callbackFlow {
+        val manager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+        if (manager == null) {
+            trySend(Unit)
+            close()
+            return@callbackFlow
+        }
+
+        val callback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) {
+                trySend(Unit)
+            }
+
+            override fun onLost(network: Network) {
+                trySend(Unit)
+            }
+
+            override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
+                trySend(Unit)
+            }
+        }
+
+        val request = NetworkRequest.Builder()
+            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            .build()
+
+        val registration = runCatching {
+            manager.registerNetworkCallback(request, callback)
+        }
+        if (registration.isFailure) {
+            trySend(Unit)
+            close(registration.exceptionOrNull())
+            return@callbackFlow
+        }
+
+        // Premier signal immediat pour initialiser l'etat UI sans attente.
+        trySend(Unit)
+
+        awaitClose {
+            runCatching { manager.unregisterNetworkCallback(callback) }
+        }
+    }
 
     fun detect(port: Int): NetworkSnapshot {
         val wifiConnected = isWifiConnected()
@@ -51,20 +102,11 @@ class NetworkRepository(private val context: Context) {
     private fun isWifiConnected(): Boolean {
         val manager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
             ?: return false
-        
+
         return runCatching {
             val activeNetwork = manager.activeNetwork
-            if (activeNetwork != null) {
-                val capabilities = manager.getNetworkCapabilities(activeNetwork)
-                if (capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true) {
-                    return true
-                }
-            }
-
-            manager.allNetworks.any { network ->
-                val capabilities = manager.getNetworkCapabilities(network)
-                capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
-            }
+            val capabilities = activeNetwork?.let { manager.getNetworkCapabilities(it) }
+            capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
         }.getOrDefault(false)
     }
 

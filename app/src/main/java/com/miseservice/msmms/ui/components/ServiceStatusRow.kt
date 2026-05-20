@@ -28,7 +28,6 @@ import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.miseservice.msmms.model.BleDeviceState
 import com.miseservice.msmms.R
 import com.miseservice.msmms.viewmodel.MainUiState
 
@@ -46,8 +45,8 @@ fun ServiceStatusRow(
         // Indicateur système : vert = tout OK, rouge = au moins 1 condition en erreur
         val allHealthy = uiState.serviceActive
                 && uiState.isIpValid
-                && uiState.bleDeviceState == BleDeviceState.Connected
                 && uiState.simNetworkAvailable
+                && uiState.powerManagerConnected
         Box(
             modifier = Modifier
                 .size(16.dp)
@@ -108,7 +107,7 @@ fun ServiceStatusRow(
         }
         Spacer(modifier = Modifier.width(8.dp))
         Switch(
-            checked = uiState.serviceActive,
+            checked = uiState.serviceToggleTargetActive ?: uiState.serviceActive,
             onCheckedChange = onCheckedChange,
             enabled = !uiState.isLoading,
             colors = SwitchDefaults.colors(

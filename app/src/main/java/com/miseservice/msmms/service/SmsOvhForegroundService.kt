@@ -31,6 +31,19 @@ class SmsOvhForegroundService : Service() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
+        
+        // On démarre le foreground immédiatement dans onCreate pour éviter l'ANR
+        val notification = buildNotification()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(
+                NOTIFICATION_ID,
+                notification,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+            )
+        } else {
+            startForeground(NOTIFICATION_ID, notification)
+        }
+
         val powerManager = getSystemService(POWER_SERVICE) as PowerManager
         wakeLock = powerManager.newWakeLock(
             PowerManager.PARTIAL_WAKE_LOCK,
@@ -49,16 +62,8 @@ class SmsOvhForegroundService : Service() {
             stopSelf()
             return START_NOT_STICKY
         }
-        val notification = buildNotification()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(
-                NOTIFICATION_ID,
-                notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC // À adapter selon le besoin réel
-            )
-        } else {
-            startForeground(NOTIFICATION_ID, notification)
-        }
+        
+        // Le foreground est déjà lancé dans onCreate, mais on peut rafraîchir la notification ici si besoin
         return START_STICKY
     }
 

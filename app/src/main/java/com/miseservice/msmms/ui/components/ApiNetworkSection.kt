@@ -46,6 +46,7 @@ fun ApiNetworkSection(
     onRefreshNetwork: () -> Unit
 ) {
     val emphasizedLabelSize = 18.sp
+    val mutedFieldColors = smsOvhMutedTextFieldColors()
     var showResetTokenDialog by rememberSaveable { mutableStateOf(false) }
 
     // Note: Le rafraîchissement est maintenant déclenché par le ViewModel lors du changement d'onglet
@@ -98,7 +99,8 @@ fun ApiNetworkSection(
     CopyableReadOnlyField(
         value = ipValue,
         onCopy = { onCopy("connected-ip", ipValue) },
-        label = { Text(stringResource(R.string.connected_ip_label), fontSize = emphasizedLabelSize) }
+        label = { Text(stringResource(R.string.connected_ip_label), fontSize = emphasizedLabelSize) },
+        colors = mutedFieldColors
     )
     Spacer(Modifier.height(10.dp))
 
@@ -143,7 +145,8 @@ fun ApiNetworkSection(
                     )
                 }
             }
-        }
+        },
+        colors = mutedFieldColors
     )
     if (ssidHint != null) {
         Text(
@@ -187,19 +190,22 @@ fun ApiNetworkSection(
             CopyableReadOnlyField(
                 value = sendEndpoint,
                 onCopy = { onCopy("send-endpoint", sendEndpoint) },
-                label = { Text(stringResource(R.string.endpoint_send_label)) }
+                label = { Text(stringResource(R.string.endpoint_send_label)) },
+                colors = mutedFieldColors
             )
             Spacer(Modifier.height(10.dp))
             CopyableReadOnlyField(
                 value = logsEndpoint,
                 onCopy = { onCopy("logs-endpoint", logsEndpoint) },
-                label = { Text(stringResource(R.string.endpoint_logs_label)) }
+                label = { Text(stringResource(R.string.endpoint_logs_label)) },
+                colors = mutedFieldColors
             )
             Spacer(Modifier.height(10.dp))
             CopyableReadOnlyField(
                 value = batteryEndpoint,
                 onCopy = { onCopy("battery-endpoint", batteryEndpoint) },
-                label = { Text(stringResource(R.string.endpoint_battery_label)) }
+                label = { Text(stringResource(R.string.endpoint_battery_label)) },
+                colors = mutedFieldColors
             )
         } else {
             Text(
@@ -233,7 +239,8 @@ fun ApiNetworkSection(
                     modifier = Modifier.clickable { showResetTokenDialog = true }
                 )
             }
-        }
+        },
+        colors = mutedFieldColors
     )
 
     Spacer(Modifier.height(10.dp))
@@ -251,7 +258,8 @@ fun ApiNetworkSection(
     CopyableReadOnlyField(
         value = locationValue,
         onCopy = { onCopy("location", locationValue) },
-        label = { Text(stringResource(R.string.location_label), fontSize = emphasizedLabelSize) }
+        label = { Text(stringResource(R.string.location_label), fontSize = emphasizedLabelSize) },
+        colors = mutedFieldColors
     )
 
 

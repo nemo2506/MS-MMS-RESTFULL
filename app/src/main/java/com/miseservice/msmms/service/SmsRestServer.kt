@@ -115,7 +115,7 @@ class SmsRestServer @Inject constructor(
         try {
             val headers = session.headers
             val authHeader = headers["authorization"]
-            val expectedToken = "Bearer ${ApiTokenManager.getToken(context)}"
+            val expectedToken = "Bearer ${ApiTokenManager.getServerToken()}"
 
             if (authHeader == null || authHeader != expectedToken) {
                 saveApiLog(

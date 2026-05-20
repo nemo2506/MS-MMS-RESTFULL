@@ -37,3 +37,20 @@ fun smsOvhButtonColors(): ButtonColors {
     )
 }
 
+@Composable
+fun smsOvhMutedTextFieldColors(): TextFieldColors {
+    return TextFieldDefaults.colors(
+        focusedTextColor = Color.White.copy(alpha = 0.82f),
+        unfocusedTextColor = Color.White.copy(alpha = 0.76f),
+        focusedLabelColor = Color.White.copy(alpha = 0.82f),
+        unfocusedLabelColor = Color.White.copy(alpha = 0.76f),
+        focusedSupportingTextColor = Color.White.copy(alpha = 0.76f),
+        unfocusedSupportingTextColor = Color.White.copy(alpha = 0.72f),
+        focusedIndicatorColor = colorResource(id = R.color.smsovh_primary).copy(alpha = 0.85f),
+        unfocusedIndicatorColor = Color.White.copy(alpha = 0.55f),
+        focusedContainerColor = Color.Transparent,
+        unfocusedContainerColor = Color.Transparent,
+        disabledContainerColor = Color.Transparent,
+        cursorColor = colorResource(id = R.color.smsovh_primary)
+    )
+}

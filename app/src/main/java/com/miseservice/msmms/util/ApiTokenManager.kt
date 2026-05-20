@@ -1,41 +1,49 @@
 package com.miseservice.msmms.util
 
-import android.content.Context
-import androidx.core.content.edit
-import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKey
-import java.util.UUID
+import com.miseservice.msmms.BuildConfig
 
+/**
+ * Gère les tokens d'authentification en mémoire.
+ * Les tokens sont synchronisés depuis la base de données par le MainViewModel.
+ */
 object ApiTokenManager {
-    private const val PREF_NAME = "api_token_prefs"
-    private const val KEY_TOKEN = "api_token"
+    @Volatile
+    private var serverToken: String? = null
 
-    fun getToken(context: Context): String {
-        val prefs = getPrefs(context)
-        var token = prefs.getString(KEY_TOKEN, null)
-        if (token == null) {
-            token = UUID.randomUUID().toString().replace("-", "")
-            prefs.edit {
-                putString(KEY_TOKEN, token)
-            }
-        }
-        return token
+    @Volatile
+    private var powerToken: String? = null
+
+    /**
+     * Token pour le serveur REST entrant (MMS).
+     * Fallback: BuildConfig.SERVER_TOKEN
+     */
+    fun getServerToken(): String {
+        return serverToken ?: BuildConfig.SERVER_TOKEN.trim()
     }
 
-    fun setToken(context: Context, token: String) {
-        getPrefs(context).edit {
-            putString(KEY_TOKEN, token)
-        }
+    /**
+     * Token pour le client Power API sortant.
+     * Fallback: BuildConfig.API_BEARER
+     */
+    fun getPowerToken(): String {
+        return powerToken ?: BuildConfig.API_BEARER.trim()
     }
 
-    private fun getPrefs(context: Context) =
-        EncryptedSharedPreferences.create(
-            context,
-            PREF_NAME,
-            MasterKey.Builder(context)
-                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-                .build(),
-            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-        )
+    /**
+     * Met à jour le token du serveur (entrant).
+     */
+    fun setServerToken(token: String?) {
+        serverToken = token?.trim()?.ifBlank { null }
+    }
+
+    /**
+     * Met à jour le token Power (sortant).
+     */
+    fun setPowerToken(token: String?) {
+        powerToken = token?.trim()?.ifBlank { null }
+    }
+
+    // Compatibilité temporaire si nécessaire, à migrer vers getServerToken/getPowerToken
+    @Deprecated("Utiliser getPowerToken() ou getServerToken()", ReplaceWith("getPowerToken()"))
+    fun getToken(): String = getPowerToken()
 }

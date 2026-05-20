@@ -48,7 +48,7 @@ import kotlinx.coroutines.launch
 fun SystemStatusDialog(
     serviceActive: Boolean,
     networkConnected: Boolean,
-    bluetoothConnected: Boolean,
+    powerManagerConnected: Boolean,
     simNetworkAvailable: Boolean,
     onDismiss: () -> Unit
 ) {
@@ -108,13 +108,25 @@ fun SystemStatusDialog(
                         HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
                         Spacer(Modifier.height(16.dp))
 
-                        StatusRow(label = stringResource(R.string.system_status_service), ok = serviceActive)
+                        StatusRow(
+                            label = stringResource(R.string.system_status_service),
+                            ok = serviceActive
+                        )
                         Spacer(Modifier.height(14.dp))
-                        StatusRow(label = stringResource(R.string.system_status_network), ok = networkConnected)
+                        StatusRow(
+                            label = stringResource(R.string.system_status_network),
+                            ok = networkConnected
+                        )
                         Spacer(Modifier.height(14.dp))
-                        StatusRow(label = stringResource(R.string.system_status_bluetooth), ok = bluetoothConnected)
+                        StatusRow(
+                            label = stringResource(R.string.system_status_chargeur),
+                            ok = powerManagerConnected
+                        )
                         Spacer(Modifier.height(14.dp))
-                        StatusRow(label = stringResource(R.string.system_status_sim), ok = simNetworkAvailable)
+                        StatusRow(
+                            label = stringResource(R.string.system_status_sim),
+                            ok = simNetworkAvailable
+                        )
 
                         Spacer(Modifier.height(24.dp))
 

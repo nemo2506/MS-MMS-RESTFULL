@@ -1,7 +1,11 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <!--    <base-config cleartextTrafficPermitted="true" />-->
+    <!-- L'IP résolue dynamiquement (192.168.x.x) ne correspond pas à local/home. -->
+    <!-- On autorise donc le cleartext global pour éviter les échecs/réessais interminables. -->
+    <base-config cleartextTrafficPermitted="true" />
+
     <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="true">192.168.1.39</domain>
+        <domain includeSubdomains="true">local</domain>
+        <domain includeSubdomains="true">home</domain>
     </domain-config>
 </network-security-config>

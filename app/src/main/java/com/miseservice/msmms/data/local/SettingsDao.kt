@@ -15,7 +15,10 @@ interface SettingsDao {
     fun observeSettings(): Flow<AppSettingsEntity?>
 
     @Query("UPDATE app_settings SET token = :token WHERE id = 1")
-    suspend fun updateToken(token: String)
+    suspend fun updateToken(token: String?)
+
+    @Query("UPDATE app_settings SET powerToken = :powerToken WHERE id = 1")
+    suspend fun updatePowerToken(powerToken: String?)
 
     @Query("UPDATE app_settings SET restPort = :restPort WHERE id = 1")
     suspend fun updateRestPort(restPort: Int)

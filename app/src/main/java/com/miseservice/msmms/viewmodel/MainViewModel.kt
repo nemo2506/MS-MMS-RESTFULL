@@ -1,5 +1,6 @@
 package com.miseservice.msmms.viewmodel
 
+import com.miseservice.msmms.BuildConfig
 import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
@@ -7,25 +8,18 @@ import androidx.lifecycle.viewModelScope
 import com.miseservice.msmms.R
 import com.miseservice.msmms.data.repository.NetworkRepository
 import com.miseservice.msmms.data.repository.SettingsRepository
-import com.miseservice.msmms.domain.usecase.ConnectBleUseCase
 import com.miseservice.msmms.domain.usecase.GetSettingsUseCase
-import com.miseservice.msmms.domain.usecase.ReadBleStateUseCase
-import com.miseservice.msmms.domain.usecase.ScanBleDeviceUseCase
-import com.miseservice.msmms.domain.usecase.SendBleCommandUseCase
 import com.miseservice.msmms.domain.usecase.SendOvhSmsUseCase
 import com.miseservice.msmms.domain.usecase.SendSmsUseCase
 import com.miseservice.msmms.domain.usecase.UpdateRestPortUseCase
-import com.miseservice.msmms.model.BleCommand
-import com.miseservice.msmms.model.BleDeviceState
-import com.miseservice.msmms.model.BleRelayState
-import com.miseservice.msmms.model.BleRuntimeConfig
 import com.miseservice.msmms.model.OvhSmsRequest
 import com.miseservice.msmms.model.SendResult
 import com.miseservice.msmms.model.SmsMessage
+import com.miseservice.msmms.power.PowerRepository
 import com.miseservice.msmms.service.ServiceControlManager
 import com.miseservice.msmms.util.ApiTokenManager
-import com.miseservice.msmms.util.BatteryHelper
-import com.miseservice.msmms.util.BleMessageResolver
+import com.miseservice.msmms.util.BatteryLevelProvider
+import com.miseservice.msmms.util.BatteryOptimizationHelper
 import com.miseservice.msmms.util.ClipboardProvider
 import com.miseservice.msmms.util.LocationDataProvider
 import com.miseservice.msmms.util.PhoneNumberValidator
@@ -41,9 +35,16 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import java.net.InetAddress
+import java.net.URI
 import javax.inject.Inject
+import javax.jmdns.JmDNS
+import javax.jmdns.ServiceInfo
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
@@ -52,10 +53,6 @@ class MainViewModel @Inject constructor(
     private val sendOvhSmsUseCase: SendOvhSmsUseCase,
     private val getSettingsUseCase: GetSettingsUseCase,
     private val updateRestPortUseCase: UpdateRestPortUseCase,
-    private val scanBleDeviceUseCase: ScanBleDeviceUseCase,
-    private val connectBleUseCase: ConnectBleUseCase,
-    private val sendBleCommandUseCase: SendBleCommandUseCase,
-    private val readBleStateUseCase: ReadBleStateUseCase,
     private val settingsRepository: SettingsRepository,
     private val restServerEventManager: RestServerEventManager,
     private val serviceControlManager: ServiceControlManager,
@@ -63,14 +60,19 @@ class MainViewModel @Inject constructor(
     private val locationDataProvider: LocationDataProvider,
     private val simNetworkStatusProvider: SimNetworkStatusProvider,
     private val clipboardProvider: ClipboardProvider,
-    private val networkRepository: NetworkRepository
+    private val networkRepository: NetworkRepository,
+    private val powerRepository: PowerRepository,
+    private val batteryLevelProvider: BatteryLevelProvider
 ) : ViewModel() {
-    // BleMessageResolver créé directement sans injection pour éviter les conflits Hilt
-    private val bleMessageResolver: BleMessageResolver = BleMessageResolver(context)
+    private val ipv4Regex = Regex("^\\d{1,3}(\\.\\d{1,3}){3}$")
+
     private var saveSettingsJob: Job? = null
     private var restPortEditingUnlockJob: Job? = null
-    private var autoRelayMonitorJob: Job? = null
     private var simNetworkMonitorJob: Job? = null
+    private var networkMonitorJob: Job? = null
+    private var powerAutomationJob: Job? = null
+    private var powerIpDiscoveryJob: Job? = null
+    private var lastDiscoveryUrl: String? = null
     private var lastAppliedServiceActive: Boolean? = null
 
     @Volatile
@@ -81,6 +83,13 @@ class MainViewModel @Inject constructor(
         const val SETTINGS_SAVE_DEBOUNCE_MS = 500L
         const val REST_PORT_EDIT_GRACE_MS = 5000L
         const val AUTO_RELAY_CHECK_INTERVAL_MS = 60_000L
+        const val DEFAULT_POWER_BATTERY_MIN = 20
+        const val DEFAULT_POWER_BATTERY_MAX = 80
+        const val POWER_IP_DISCOVERY_INPUT_DEBOUNCE_MS = 250L
+        const val POWER_IP_DISCOVERY_BASE_RETRY_MS = 500L
+        const val POWER_IP_DISCOVERY_MAX_RETRY_MS = 5_000L
+        const val POWER_IP_DISCOVERY_RESOLVE_TIMEOUT_MS = 12_000L
+        const val POWER_IP_DISCOVERY_FAST_FAIL_TIMEOUT_MS = 1_500L
     }
 
     private fun beginRestPortEditingWindow() {
@@ -132,9 +141,15 @@ class MainViewModel @Inject constructor(
             serviceActive = currentSettings.serviceActive,
             hostIp = host,
             isIpValid = ValidationHelper.isHostIpUsable(host),
-            blePin = currentSettings.blePin.orEmpty(),
-            bleMinBattery = currentSettings.bleMinBattery,
-            bleMaxBattery = currentSettings.bleMaxBattery
+            powerToken = currentSettings.powerToken
+                ?.trim()
+                ?.takeIf { it.isNotBlank() }
+                ?: ApiTokenManager.getPowerToken(),
+            powerBaseUrl = currentSettings.powerBaseUrl.ifBlank { defaultPowerUrl() },
+            powerResolvedIp = currentSettings.powerResolvedIp,
+            powerSwitchNumber = currentSettings.powerSwitchNumber.ifBlank { BuildConfig.API_CHARGE_PIN },
+            powerBatteryMin = currentSettings.powerBatteryMin.toString(),
+            powerBatteryMax = currentSettings.powerBatteryMax.toString()
         )
 
         _uiState.value = if (isRestPortEditing) {
@@ -146,50 +161,10 @@ class MainViewModel @Inject constructor(
                 restPortError = null
             )
         }
-        syncAutoRelayMonitorWithServiceState()
-    }
 
-    private fun syncAutoRelayMonitorWithServiceState() {
-        if (_uiState.value.serviceActive) {
-            startAutoRelayMonitor()
-        } else {
-            stopAutoRelayMonitor()
-        }
-    }
-
-    private fun startAutoRelayMonitor() {
-        if (autoRelayMonitorJob?.isActive == true) return
-        autoRelayMonitorJob = viewModelScope.launch {
-            while (true) {
-                evaluateBatteryRuleAndExecute()
-                delay(AUTO_RELAY_CHECK_INTERVAL_MS)
-            }
-        }
-    }
-
-    private fun stopAutoRelayMonitor() {
-        autoRelayMonitorJob?.cancel()
-        autoRelayMonitorJob = null
-    }
-
-    private fun evaluateBatteryRuleAndExecute() {
-        val state = _uiState.value
-        if (!state.serviceActive) return
-        if (state.bleDeviceState != BleDeviceState.Connected) return
-        if (state.bleRelayLoading) return
-
-        val batteryPercent = BatteryHelper.getCurrentBatteryPercent(context) ?: return
-        Log.d(
-            "POWER_RULE",
-            "battery=$batteryPercent min=${state.bleMinBattery} max=${state.bleMaxBattery} relay=${state.bleRelayState}"
-        )
-
-        if (state.bleRelayState != BleRelayState.On && batteryPercent < state.bleMinBattery) {
-            sendRelayOnCommand()
-            return
-        }
-        if (state.bleRelayState == BleRelayState.On && batteryPercent > state.bleMaxBattery) {
-            sendRelayOffCommand()
+        // Lance une résolution persistante si l'URL n'est pas déjà une IPv4 et qu'on n'a pas d'IP résolue valide.
+        if (_uiState.value.powerResolvedIp.isNullOrBlank() && shouldDiscoverPowerIp(_uiState.value.powerBaseUrl)) {
+            schedulePowerIpDiscovery()
         }
     }
 
@@ -198,6 +173,7 @@ class MainViewModel @Inject constructor(
         val state = _uiState.value
         val currentToken = _token.value
         viewModelScope.launch {
+            val normalizedPowerUrl = normalizePowerUrl(state.powerBaseUrl).ifBlank { defaultPowerUrl() }
             val entity = com.miseservice.msmms.data.local.AppSettingsEntity(
                 senderId = state.senderId,
                 recipient = state.recipient,
@@ -212,14 +188,216 @@ class MainViewModel @Inject constructor(
                 hostIp = state.hostIp,
                 restPort = state.restPort,
                 token = currentToken,
-                blePin = state.blePin,
-                bleConnectionActive = false,
-                bleMinBattery = state.bleMinBattery,
-                bleMaxBattery = state.bleMaxBattery
+                powerToken = state.powerToken,
+                powerBaseUrl = normalizedPowerUrl,
+                powerSwitchNumber = state.powerSwitchNumber.trim().ifBlank { BuildConfig.API_CHARGE_PIN },
+                powerBatteryMin = parseLevelOrDefault(state.powerBatteryMin, DEFAULT_POWER_BATTERY_MIN),
+                powerBatteryMax = parseLevelOrDefault(state.powerBatteryMax, DEFAULT_POWER_BATTERY_MAX),
+                powerResolvedIp = state.powerResolvedIp
             )
             settingsRepository.saveSettings(entity)
         }
     }
+
+    private fun defaultPowerUrl(): String = BuildConfig.API_BASE_URL
+
+    private fun normalizePowerUrl(raw: String): String {
+        val trimmed = raw.trim()
+        if (trimmed.isBlank()) return ""
+        return if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) trimmed else "http://$trimmed"
+    }
+
+    private fun extractHost(raw: String): String? = runCatching {
+        URI(normalizePowerUrl(raw)).host
+    }.getOrNull()?.trim()?.ifBlank { null }
+
+    private fun extractIpv4Host(raw: String): String? {
+        val host = extractHost(raw) ?: return null
+        return if (isIpv4Host(host)) host else null
+    }
+
+    private fun isIpv4Host(host: String): Boolean = host.matches(ipv4Regex)
+
+    private fun shouldDiscoverPowerIp(rawUrl: String): Boolean {
+        val host = extractHost(rawUrl) ?: return false
+        return !isIpv4Host(host)
+    }
+
+    private fun schedulePowerIpDiscovery() {
+        val currentUrl = normalizePowerUrl(_uiState.value.powerBaseUrl).ifBlank { defaultPowerUrl() }
+        
+        // Si une découverte est déjà en cours pour la MÊME URL, on ne fait rien.
+        if (powerIpDiscoveryJob?.isActive == true && lastDiscoveryUrl == currentUrl) {
+            return
+        }
+
+        powerIpDiscoveryJob?.cancel()
+        lastDiscoveryUrl = currentUrl
+
+        if (!shouldDiscoverPowerIp(currentUrl)) {
+            _uiState.value = _uiState.value.copy(isPowerIpDiscoveryLoading = false)
+            return
+        }
+
+        // Si l'URL est déjà persistée en IPv4, on évite toute redécouverte DNS.
+        if (!extractIpv4Host(currentUrl).isNullOrBlank()) {
+            _uiState.value = _uiState.value.copy(
+                powerResolvedIp = extractIpv4Host(currentUrl),
+                isPowerIpDiscoveryLoading = false
+            )
+            return
+        }
+
+        powerIpDiscoveryJob = viewModelScope.launch {
+            val networkSnapshot = withContext(Dispatchers.IO) {
+                networkRepository.detect(_uiState.value.restPort)
+            }
+            if (!networkSnapshot.isWifiConnected) {
+                _uiState.value = _uiState.value.copy(isPowerIpDiscoveryLoading = false)
+                return@launch
+            }
+
+            _uiState.value = _uiState.value.copy(isPowerIpDiscoveryLoading = true)
+            delay(POWER_IP_DISCOVERY_INPUT_DEBOUNCE_MS)
+            runPersistentPowerIpDiscovery()
+        }
+    }
+
+    private suspend fun runPersistentPowerIpDiscovery() {
+        var attempt = 0
+        _uiState.value = _uiState.value.copy(isPowerIpDiscoveryLoading = true)
+        try {
+            while (currentCoroutineContext().isActive) {
+                val currentUrl = normalizePowerUrl(_uiState.value.powerBaseUrl).ifBlank { defaultPowerUrl() }
+                val host = extractHost(currentUrl)
+                if (host.isNullOrBlank()) {
+                    Log.w("PowerDiscovery", "Discovery aborted: host is null or blank")
+                    return
+                }
+
+                if (isIpv4Host(host)) {
+                    _uiState.value = _uiState.value.copy(
+                        powerResolvedIp = host,
+                        powerManagerConnected = true
+                    )
+                    return
+                }
+
+                val resolvedUrl = if (attempt == 0) {
+                    // 1er essai rapide: DNS court, puis fallback immédiat vers la résolution complète.
+                    resolvePowerBaseUrlToIpFastFail(currentUrl) ?: resolvePowerBaseUrlToIp(currentUrl)
+                } else {
+                    resolvePowerBaseUrlToIp(currentUrl)
+                }
+
+                val resolvedIp = extractIpv4Host(resolvedUrl)
+                if (!resolvedIp.isNullOrBlank()) {
+                    _uiState.value = _uiState.value.copy(
+                        powerResolvedIp = resolvedIp,
+                        powerManagerConnected = true
+                    )
+                    // On persiste immédiatement l'IP trouvée
+                    persistCurrentSettingsNow()
+                    return
+                }
+
+                val multiplier = 1L shl minOf(attempt, 5)
+                val retryDelayMs = minOf(
+                    POWER_IP_DISCOVERY_MAX_RETRY_MS,
+                    POWER_IP_DISCOVERY_BASE_RETRY_MS * multiplier
+                )
+                delay(retryDelayMs)
+                attempt++
+            }
+        } finally {
+            _uiState.value = _uiState.value.copy(isPowerIpDiscoveryLoading = false)
+        }
+    }
+
+    private suspend fun resolvePowerBaseUrlToIpFastFail(rawUrl: String): String? {
+        val normalized = normalizePowerUrl(rawUrl).ifBlank { defaultPowerUrl() }
+        val uri = runCatching { URI(normalized) }.getOrNull() ?: return null
+        val host = uri.host?.trim().orEmpty()
+        if (host.isBlank()) return null
+        if (isIpv4Host(host)) return normalized
+
+        val ip = withTimeoutOrNull(POWER_IP_DISCOVERY_FAST_FAIL_TIMEOUT_MS) {
+            withContext(Dispatchers.IO) {
+                runCatching { InetAddress.getByName(host).hostAddress }
+                    .getOrNull()
+                    ?.takeIf { isIpv4Host(it) }
+            }
+        } ?: run {
+            Log.v("PowerDiscovery", "Fast-fail resolution failed or timed out for $host")
+            return null
+        }
+
+        val scheme = uri.scheme ?: "http"
+        val port = uri.port
+        return if (port > 0) "$scheme://$ip:$port" else "$scheme://$ip"
+    }
+
+    private suspend fun resolvePowerBaseUrlToIp(rawUrl: String): String {
+        val normalized = normalizePowerUrl(rawUrl).ifBlank { defaultPowerUrl() }
+        val uri = runCatching { URI(normalized) }.getOrNull() ?: return normalized
+        val host = uri.host?.trim().orEmpty()
+        if (host.isBlank()) return normalized
+        if (isIpv4Host(host)) return normalized
+
+        val ip = withTimeoutOrNull(POWER_IP_DISCOVERY_RESOLVE_TIMEOUT_MS) {
+            withContext(Dispatchers.IO) {
+                // 1. Essai via DNS standard (InetAddress)
+                val standardIp = runCatching {
+                    InetAddress.getAllByName(host)
+                        .mapNotNull { it.hostAddress }
+                        .firstOrNull { isIpv4Host(it) }
+                }.getOrNull()
+
+                if (standardIp != null) {
+                    return@withContext standardIp
+                }
+
+                // 2. Fallback mDNS si l'host finit par .local
+                if (host.endsWith(".local", ignoreCase = true)) {
+                    var jmdns: JmDNS? = null
+                    try {
+                        val name = host.removeSuffix(".local").lowercase()
+                        jmdns = JmDNS.create(InetAddress.getByName(_uiState.value.hostIp))
+
+                        val services = jmdns.list("_http._tcp.local.")
+
+                        val match = services.firstOrNull { it.server.lowercase().startsWith(name) }
+                            ?: services.firstOrNull { it.name.lowercase().contains(name) }
+
+                        val foundIp = match?.inet4Addresses?.firstOrNull()?.hostAddress
+
+                        if (foundIp == null) {
+                            Log.w("PowerDiscovery", "mDNS could not find any matching service for $name")
+                        }
+                        foundIp
+                    } catch (e: Exception) {
+                        Log.e("PowerDiscovery", "mDNS error for $host", e)
+                        null
+                    } finally {
+                        runCatching { jmdns?.close() }
+                    }
+                } else null
+            }
+        }
+
+        if (ip == null) {
+            Log.w("PowerDiscovery", "Resolution TIMEOUT or failed for $host (after ${POWER_IP_DISCOVERY_RESOLVE_TIMEOUT_MS}ms). Returning original URL.")
+            return normalized
+        }
+
+        val scheme = uri.scheme ?: "http"
+        val port = uri.port
+        val result = if (port > 0) "$scheme://$ip:$port" else "$scheme://$ip"
+        return result
+    }
+
+    private fun parseLevelOrDefault(raw: String, fallback: Int): Int =
+        raw.trim().toIntOrNull()?.coerceIn(0, 100) ?: fallback
 
     private fun schedulePersistCurrentSettings() {
         saveSettingsJob?.cancel()
@@ -241,7 +419,12 @@ class MainViewModel @Inject constructor(
         lastAppliedServiceActive = active
     }
 
-    private val _uiState = MutableStateFlow(MainUiState())
+    private val _uiState = MutableStateFlow(
+        MainUiState(
+            powerBaseUrl = defaultPowerUrl(),
+            powerSwitchNumber = BuildConfig.API_CHARGE_PIN
+        )
+    )
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
 
     private val _token = MutableStateFlow("")
@@ -249,41 +432,15 @@ class MainViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            val secureToken = ApiTokenManager.getToken(context)
-            // Afficher immédiatement le token dès le 1er démarrage, sans attendre Room
-            _token.value = secureToken
-            var settings = getSettingsUseCase()
-            if (settings == null) {
-                settings = com.miseservice.msmms.data.local.AppSettingsEntity(
-                    senderId = null,
-                    recipient = null,
-                    message = null,
-                    ovhAppKey = null,
-                    ovhAppSecret = null,
-                    ovhConsumerKey = null,
-                    ovhServiceName = null,
-                    ovhEndpoint = "ovh-eu",
-                    ovhCountryPrefix = "+33",
-                    serviceActive = false,
-                    hostIp = null,
-                    restPort = ValidationHelper.DEFAULT_REST_PORT,
-                    token = secureToken,
-                    blePin = null,
-                    bleConnectionActive = false,
-                    bleMinBattery = 20,
-                    bleMaxBattery = 80
-                )
-                settingsRepository.saveSettings(settings)
-            } else {
-                val storedToken = settings.token.orEmpty()
-                if (storedToken != secureToken) {
-                    settingsRepository.updateToken(secureToken)
-                }
-            }
-
             settingsRepository.observeSettings().collect { observed ->
                 val currentSettings = observed ?: return@collect
-                _token.value = currentSettings.token ?: secureToken
+                
+                // Synchronisation des tokens vers le cache mémoire
+                ApiTokenManager.setServerToken(currentSettings.token)
+                ApiTokenManager.setPowerToken(currentSettings.powerToken)
+                
+                _token.value = ApiTokenManager.getServerToken()
+
                 if (isRestPortEditing) {
                     pendingObservedSettings = currentSettings
                 }
@@ -314,7 +471,10 @@ class MainViewModel @Inject constructor(
 
         // Surveillance autonome de l'état du réseau SIM
         startSimNetworkMonitoring()
-        refreshNetworkInfo()
+        startNetworkMonitoring()
+        refreshBatteryOptimizationState()
+        startPowerAutomation()
+        // schedulePowerIpDiscovery() est déjà déclenché par l'observation des settings
     }
 
     fun refreshNetworkInfo() {
@@ -334,7 +494,6 @@ class MainViewModel @Inject constructor(
                 !snapshot.isLocationEnabled -> context.getString(R.string.ssid_requires_location_enabled)
                 else -> context.getString(R.string.ssid_unavailable)
             }
-            Log.d("MainViewModel", "Network refresh: SSID collected = $ssidValue, IP = ${snapshot.localIpAddress}")
             _uiState.value = _uiState.value.copy(
                 wifiSsid = ssidValue,
                 hasFineLocation = snapshot.hasLocationPermission,
@@ -343,6 +502,17 @@ class MainViewModel @Inject constructor(
                 isIpValid = ValidationHelper.isHostIpUsable(snapshot.localIpAddress ?: ""),
                 isNetworkLoading = false
             )
+
+            // Relance la découverte uniquement quand le Wi-Fi est disponible et qu'aucun job n'est en cours.
+            val currentPowerUrl = normalizePowerUrl(_uiState.value.powerBaseUrl).ifBlank { defaultPowerUrl() }
+            if (
+                snapshot.isWifiConnected &&
+                shouldDiscoverPowerIp(currentPowerUrl) &&
+                powerIpDiscoveryJob?.isActive != true
+            ) {
+                schedulePowerIpDiscovery()
+            }
+
             // Refresh location if permission is already granted during network refresh
             if (_uiState.value.locationPermissionGranted) {
                 fetchCurrentLocation()
@@ -353,10 +523,9 @@ class MainViewModel @Inject constructor(
     fun resetToken() {
         viewModelScope.launch {
             val newToken = java.util.UUID.randomUUID().toString().replace("-", "")
-            ApiTokenManager.setToken(context, newToken)
-            settingsRepository.updateToken(newToken)
+            ApiTokenManager.setServerToken(newToken)
             _token.value = newToken
-            persistCurrentSettingsNow()
+            settingsRepository.updateToken(newToken)
         }
     }
 
@@ -372,11 +541,21 @@ class MainViewModel @Inject constructor(
     }
 
     fun showBatteryOptimizationDialog() {
-        _uiState.value = _uiState.value.copy(batteryOptimizationDialogVisible = true)
+        if (_uiState.value.batteryOptimizationEnabled) {
+            _uiState.value = _uiState.value.copy(batteryOptimizationDialogVisible = true)
+        }
     }
 
     fun dismissBatteryOptimizationDialog() {
         _uiState.value = _uiState.value.copy(batteryOptimizationDialogVisible = false)
+    }
+
+    fun refreshBatteryOptimizationState() {
+        val enabled = !BatteryOptimizationHelper.isIgnoringBatteryOptimizations(context)
+        _uiState.value = _uiState.value.copy(
+            batteryOptimizationEnabled = enabled,
+            batteryOptimizationDialogVisible = _uiState.value.batteryOptimizationDialogVisible && enabled
+        )
     }
 
     fun updateSimNetworkStatus(available: Boolean) {
@@ -503,10 +682,6 @@ class MainViewModel @Inject constructor(
                     isLoading = false,
                     serviceToggleTargetActive = null
                 )
-                if (!active) {
-                    disconnectBle(showFeedback = false)
-                }
-                syncAutoRelayMonitorWithServiceState()
             }.onSuccess {
                 schedulePersistCurrentSettings()
                 delay(3000)
@@ -654,6 +829,15 @@ class MainViewModel @Inject constructor(
         simNetworkMonitorJob = null
     }
 
+    private fun startNetworkMonitoring() {
+        if (networkMonitorJob?.isActive == true) return
+        networkMonitorJob = viewModelScope.launch {
+            networkRepository.observeConnectivityChanges().collect {
+                refreshNetworkInfo()
+            }
+        }
+    }
+
     // ── Utilitaires externalisés (MVVM-compliant) ─────────────────────────
     /**
      * Copie une valeur dans le presse-papiers.
@@ -679,315 +863,177 @@ class MainViewModel @Inject constructor(
         }
     }
 
-
-
-    /**
-     * Met a jour le seuil bas (0..100) pour l'automatisation BLE et persiste l'etat UI.
-     *
-     * Note: la logique de declenchement immediate ci-dessous depend du niveau batterie
-     * recu du module et doit etre appelee avec une telemetrie batterie fiable.
-     */
-    fun setBleBatteryMin(percent: Int) {
-        val clamped = percent.coerceIn(0, 100)
-        _uiState.value = _uiState.value.copy(bleMinBattery = clamped)
-        schedulePersistCurrentSettings()
-        evaluateBatteryRuleAndExecute()
-    }
-
-    /**
-     * Met a jour le seuil haut (0..100) pour l'automatisation BLE et persiste l'etat UI.
-     *
-     * Note: la logique de declenchement immediate ci-dessous depend du niveau batterie
-     * recu du module et doit etre appelee avec une telemetrie batterie fiable.
-     */
-    fun setBleBatteryMax(percent: Int) {
-        val clamped = percent.coerceIn(0, 100)
-        _uiState.value = _uiState.value.copy(bleMaxBattery = clamped)
-        schedulePersistCurrentSettings()
-        evaluateBatteryRuleAndExecute()
-    }
-
-
-    // ── Commandes Bluetooth ESP32 ──────────────────────────────────────────────
-
-    fun scanBleDevice() {
-        viewModelScope.launch {
-            val result = scanBleDeviceUseCase()
-            when (result) {
-                is BleDeviceState.Found -> {
-                    _uiState.value = _uiState.value.copy(
-                        bleDeviceState = result,
-                        bleDeviceAddress = result.address,
-                        bleErrorMessage = null
-                    )
-                }
-
-                is BleDeviceState.NotFound -> {
-                    _uiState.value = _uiState.value.copy(
-                        bleDeviceState = result,
-                        bleErrorMessage = bleMessageResolver.getErrorMessage(result)
-                    )
-                }
-
-                is BleDeviceState.Error -> {
-                    _uiState.value = _uiState.value.copy(
-                        bleDeviceState = result,
-                        bleErrorMessage = bleMessageResolver.getErrorMessage(result)
-                    )
-                }
-
-                BleDeviceState.Scanning -> {
-                    _uiState.value = _uiState.value.copy(
-                        bleDeviceState = result,
-                        bleErrorMessage = null
-                    )
-                }
-
-                BleDeviceState.Connecting -> {
-                    _uiState.value = _uiState.value.copy(
-                        bleDeviceState = result,
-                        bleErrorMessage = null
-                    )
-                }
-
-                BleDeviceState.Connected -> {
-                    _uiState.value = _uiState.value.copy(
-                        bleDeviceState = result,
-                        bleErrorMessage = null
-                    )
-                }
-
-                BleDeviceState.InvalidPin -> {
-                    _uiState.value = _uiState.value.copy(
-                        bleDeviceState = result,
-                        bleErrorMessage = bleMessageResolver.getErrorMessage(result)
-                    )
-                }
-
-                BleDeviceState.Timeout -> {
-                    _uiState.value = _uiState.value.copy(
-                        bleDeviceState = result,
-                        bleErrorMessage = bleMessageResolver.getErrorMessage(result)
-                    )
-                }
-
-                BleDeviceState.ServiceNotFound -> {
-                    _uiState.value = _uiState.value.copy(
-                        bleDeviceState = result,
-                        bleErrorMessage = bleMessageResolver.getErrorMessage(result)
-                    )
-                }
-
-                BleDeviceState.CharacteristicNotFound -> {
-                    _uiState.value = _uiState.value.copy(
-                        bleDeviceState = result,
-                        bleErrorMessage = bleMessageResolver.getErrorMessage(result)
-                    )
-                }
-
-                BleDeviceState.Disconnected -> {
-                    _uiState.value = _uiState.value.copy(
-                        bleDeviceState = result,
-                        bleErrorMessage = null
-                    )
-                }
-
-                BleDeviceState.Idle -> {
-                    _uiState.value = _uiState.value.copy(
-                        bleDeviceState = result,
-                        bleErrorMessage = null
-                    )
-                }
-            }
-        }
-    }
-
-    fun connectBleDevice(pin: String = BleRuntimeConfig.pin) {
-        viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(
-                bleDeviceState = BleDeviceState.Connecting,
-                bleErrorMessage = null,
-                switchCommandStatusMessage = context.getString(R.string.bluetooth_command_sent)
-            )
-
-            val address = _uiState.value.bleDeviceAddress
-            if (address.isBlank()) {
-                val scanned = scanBleDeviceUseCase()
-                if (scanned is BleDeviceState.Found) {
-                    _uiState.value = _uiState.value.copy(
-                        bleDeviceAddress = scanned.address,
-                        bleErrorMessage = null
-                    )
-                } else {
-                    _uiState.value = _uiState.value.copy(
-                        bleDeviceState = scanned,
-                        bleErrorMessage = bleMessageResolver.getErrorMessage(scanned),
-                        switchCommandStatusMessage = context.getString(R.string.bluetooth_command_failed)
-                    )
-                    return@launch
-                }
-            }
-
-            val result = connectBleUseCase(_uiState.value.bleDeviceAddress, pin)
-            val connected = result == BleDeviceState.Connected
-            val remoteState = if (connected) readBleStateUseCase() else null
-            _uiState.value = _uiState.value.copy(
-                bleDeviceState = result,
-                blePin = if (connected) pin else _uiState.value.blePin,
-                bleErrorMessage = if (connected) null else bleMessageResolver.getErrorMessage(result),
-                bleRelayState = when (remoteState) {
-                    BleRelayState.On, BleRelayState.Off -> remoteState
-                    else -> _uiState.value.bleRelayState
-                },
-                bleWifiEnabled = when (remoteState) {
-                    is BleRelayState.WebServer -> true
-                    else -> if (connected) _uiState.value.bleWifiEnabled else false
-                },
-                switchCommandStatusMessage = if (connected) {
-                    context.getString(R.string.bluetooth_command_confirmed)
-                } else {
-                    context.getString(R.string.bluetooth_command_failed)
-                }
-            )
-            if (connected) {
-                schedulePersistCurrentSettings()
-            }
-        }
-    }
-
-    fun sendBleCommand(command: BleCommand) {
-        val isRelayCommand = command == BleCommand.RelayOn || command == BleCommand.RelayOff
-        val isWifiCommand = command == BleCommand.WifiOn || command == BleCommand.WifiOff
-
-        // Activer uniquement le loader concerné pour garder les commandes indépendantes.
-        val loadingState = _uiState.value
-        _uiState.value = loadingState.copy(
-            bleRelayLoading = if (isRelayCommand) true else loadingState.bleRelayLoading,
-            bleWifiLoading = if (isWifiCommand) true else loadingState.bleWifiLoading,
-            switchCommandStatusMessage = when {
-                isRelayCommand -> context.getString(R.string.relay_command_sent)
-                isWifiCommand -> context.getString(R.string.wifi_command_sent)
-                else -> loadingState.switchCommandStatusMessage
-            }
-        )
-        viewModelScope.launch {
-            runCatching {
-                sendBleCommandUseCase(command)
-            }.onSuccess { result ->
-                val current = _uiState.value
-                val wifiEnabled = when (command) {
-                    BleCommand.WifiOn -> true
-                    BleCommand.WifiOff -> false
-                    else -> when (result) {
-                        is BleRelayState.WebServer -> true
-                        else -> current.bleWifiEnabled
-                    }
-                }
-
-                val newRelayState = when (command) {
-                    BleCommand.RelayOn -> when (result) {
-                        BleRelayState.On, BleRelayState.Off -> result
-                        else -> BleRelayState.On
-                    }
-
-                    BleCommand.RelayOff -> when (result) {
-                        BleRelayState.On, BleRelayState.Off -> result
-                        else -> BleRelayState.Off
-                    }
-
-                    BleCommand.WifiOn, BleCommand.WifiOff -> current.bleRelayState
-                }
-
-                _uiState.value = current.copy(
-                    bleRelayState = newRelayState,
-                    bleWifiEnabled = wifiEnabled,
-                    bleRelayLoading = if (isRelayCommand) false else current.bleRelayLoading,
-                    bleWifiLoading = if (isWifiCommand) false else current.bleWifiLoading,
-                    switchCommandStatusMessage = when {
-                        isRelayCommand -> context.getString(R.string.relay_command_confirmed)
-                        isWifiCommand -> context.getString(R.string.wifi_command_confirmed)
-                        else -> current.switchCommandStatusMessage
-                    }
-                )
-            }.onFailure {
-                val current = _uiState.value
-                _uiState.value = current.copy(
-                    bleRelayLoading = if (isRelayCommand) false else current.bleRelayLoading,
-                    bleWifiLoading = if (isWifiCommand) false else current.bleWifiLoading,
-                    switchCommandStatusMessage = when {
-                        isRelayCommand -> context.getString(R.string.relay_command_failed)
-                        isWifiCommand -> context.getString(R.string.wifi_command_failed)
-                        else -> current.switchCommandStatusMessage
-                    }
-                )
-            }
-        }
-    }
-
-    fun consumeSwitchCommandStatusMessage() {
-        _uiState.value = _uiState.value.copy(switchCommandStatusMessage = null)
-    }
-
-    fun readBleState() {
-        viewModelScope.launch {
-            val result = readBleStateUseCase()
-            val current = _uiState.value
-            _uiState.value = current.copy(
-                bleRelayState = when (result) {
-                    BleRelayState.On, BleRelayState.Off -> result
-                    else -> current.bleRelayState
-                },
-                bleWifiEnabled = when (result) {
-                    is BleRelayState.WebServer -> true
-                    else -> current.bleWifiEnabled
-                }
-            )
-        }
-    }
-
-    fun disconnectBle(showFeedback: Boolean = true) {
-        _uiState.value = _uiState.value.copy(
-            bleDeviceState = BleDeviceState.Disconnected,
-            bleRelayState = BleRelayState.Unknown,
-            bleWifiEnabled = false,
-            bleErrorMessage = null,
-            switchCommandStatusMessage = if (showFeedback) {
-                context.getString(R.string.bluetooth_command_confirmed)
-            } else {
-                null
-            }
-        )
-    }
-
-    fun disconnectBleSilently() {
-        disconnectBle(showFeedback = false)
-    }
-
-    fun sendRelayOnCommand() {
-        sendBleCommand(BleCommand.RelayOn)
-    }
-
-    fun sendRelayOffCommand() {
-        sendBleCommand(BleCommand.RelayOff)
-    }
-
-    fun sendWifiOnCommand() {
-        sendBleCommand(BleCommand.WifiOn)
-    }
-
-    fun sendWifiOffCommand() {
-        sendBleCommand(BleCommand.WifiOff)
-    }
-
     fun saveAllSettings() {
         saveSettingsJob?.cancel()
         persistCurrentSettingsNow()
     }
 
+    // ── Power / Switch setters ────────────────────────────────────────────
+    fun setPowerToken(value: String) {
+        _uiState.value = _uiState.value.copy(powerToken = value)
+        ApiTokenManager.setPowerToken(value)
+        schedulePersistCurrentSettings()
+    }
+
+    fun resetPowerIpDiscovery() {
+        powerIpDiscoveryJob?.cancel()
+        _uiState.value = _uiState.value.copy(
+            powerResolvedIp = null,
+            isPowerIpDiscoveryLoading = true
+        )
+        // On force la persistence de powerResolvedIp à null pour vider le cache DB
+        schedulePersistCurrentSettings()
+        
+        powerIpDiscoveryJob = viewModelScope.launch {
+            // Un petit délai pour laisser l'UI réagir et éviter des conflits de job
+            delay(100)
+            runPersistentPowerIpDiscovery()
+        }
+    }
+
+    fun setPowerBaseUrl(value: String) {
+        val ipv4 = extractIpv4Host(value)
+        _uiState.value = _uiState.value.copy(
+            powerBaseUrl = value,
+            powerResolvedIp = ipv4
+        )
+        schedulePersistCurrentSettings()
+        if (ipv4 == null && shouldDiscoverPowerIp(value)) {
+            schedulePowerIpDiscovery()
+        } else if (ipv4 != null) {
+            powerIpDiscoveryJob?.cancel()
+            powerIpDiscoveryJob = null
+        }
+    }
+
+    fun setPowerSwitchNumber(value: String) {
+        _uiState.value = _uiState.value.copy(powerSwitchNumber = value)
+        schedulePersistCurrentSettings()
+    }
+
+    fun setPowerBatteryMin(value: String) {
+        _uiState.value = _uiState.value.copy(powerBatteryMin = value)
+        schedulePersistCurrentSettings()
+    }
+
+    fun setPowerBatteryMax(value: String) {
+        _uiState.value = _uiState.value.copy(powerBatteryMax = value)
+        schedulePersistCurrentSettings()
+    }
+
+    fun triggerPowerCharge() {
+        val snapshot = _uiState.value
+        viewModelScope.launch {
+            val effectiveBaseUrl = snapshot.powerResolvedIp?.let { ip ->
+                val uri = runCatching { URI(snapshot.powerBaseUrl) }.getOrNull()
+                val scheme = uri?.scheme ?: "http"
+                val port = uri?.port ?: -1
+                if (port > 0) "$scheme://$ip:$port" else "$scheme://$ip"
+            } ?: snapshot.powerBaseUrl
+
+            val toggled = powerRepository.togglePower(effectiveBaseUrl, snapshot.powerSwitchNumber)
+                .getOrElse { error ->
+                    _uiState.value = _uiState.value.copy(
+                        powerSnackbarMessage = context.getString(
+                            R.string.power_charge_error_message,
+                            error.message ?: context.getString(R.string.power_charge_error_default)
+                        )
+                    )
+                    return@launch
+                }
+            val expectedPin = snapshot.powerSwitchNumber.trim().toIntOrNull()
+            val isEnabled = toggled.value == 1
+            val chargeMessage = if (isEnabled) {
+                context.getString(R.string.power_charge_enabled_message)
+            } else {
+                context.getString(R.string.power_charge_disabled_message)
+            }
+            _uiState.value = _uiState.value.copy(
+                powerStatusState = toggled.state,
+                powerStatusValue = toggled.value,
+                powerManagerConnected = expectedPin != null && expectedPin == toggled.pin,
+                powerLastAction = toggled.action,
+                powerSnackbarMessage = chargeMessage
+            )
+        }
+    }
+
+    fun consumePowerSnackbar() {
+        _uiState.value = _uiState.value.copy(powerSnackbarMessage = null)
+    }
+
+    private fun startPowerAutomation() {
+        if (powerAutomationJob?.isActive == true) return
+        powerAutomationJob = viewModelScope.launch {
+            while (true) {
+                runPowerAutomationCycle()
+                delay(AUTO_RELAY_CHECK_INTERVAL_MS)
+            }
+        }
+    }
+
+    private suspend fun runPowerAutomationCycle() {
+        val snapshot = _uiState.value
+        val batteryLevel = batteryLevelProvider.getBatteryLevelPercent()
+        if (batteryLevel != null) {
+            _uiState.value = _uiState.value.copy(deviceBatteryLevel = batteryLevel)
+        }
+
+        val minLevel = parseLevelOrDefault(snapshot.powerBatteryMin, DEFAULT_POWER_BATTERY_MIN)
+        val maxLevel = parseLevelOrDefault(snapshot.powerBatteryMax, DEFAULT_POWER_BATTERY_MAX)
+
+        // On utilise l'IP résolue si disponible pour éviter les problèmes de résolution DNS .local
+        val effectiveBaseUrl = snapshot.powerResolvedIp?.let { ip ->
+            val uri = runCatching { URI(snapshot.powerBaseUrl) }.getOrNull()
+            val scheme = uri?.scheme ?: "http"
+            val port = uri?.port ?: -1
+            if (port > 0) "$scheme://$ip:$port" else "$scheme://$ip"
+        } ?: snapshot.powerBaseUrl
+
+        val status = powerRepository.fetchStatus(effectiveBaseUrl, snapshot.powerSwitchNumber)
+            .getOrElse {
+                _uiState.value = _uiState.value.copy(powerManagerConnected = false)
+                return
+            }
+
+        val expectedPin = snapshot.powerSwitchNumber.trim().toIntOrNull()
+        val connected = expectedPin != null && expectedPin == status.pin
+
+        _uiState.value = _uiState.value.copy(
+            powerStatusState = status.state,
+            powerStatusValue = status.value,
+            powerManagerConnected = connected
+        )
+
+        val currentBattery = batteryLevel ?: return
+
+        // Déclenche /api/power/pin si le relais est OFF (status == 0) ET batterie < MIN  → allume la charge
+        // Déclenche /api/power/pin si le relais est ON  (status == 1) ET batterie > MAX  → coupe la charge
+        val shouldActivatePower   = status.value == 0 && currentBattery < minLevel
+        val shouldDeactivatePower = status.value == 1 && currentBattery > maxLevel
+
+        if (!shouldActivatePower && !shouldDeactivatePower) return
+
+        val toggled = powerRepository.togglePower(effectiveBaseUrl, snapshot.powerSwitchNumber)
+            .getOrElse {
+                return
+            }
+
+        _uiState.value = _uiState.value.copy(
+            powerStatusState = toggled.state,
+            powerStatusValue = toggled.value,
+            powerManagerConnected = expectedPin != null && expectedPin == toggled.pin,
+            powerLastAction = toggled.action
+        )
+    }
+
     override fun onCleared() {
         saveSettingsJob?.cancel()
         restPortEditingUnlockJob?.cancel()
-        stopAutoRelayMonitor()
+        simNetworkMonitorJob?.cancel()
+        networkMonitorJob?.cancel()
+        powerAutomationJob?.cancel()
+        powerIpDiscoveryJob?.cancel()
         persistCurrentSettingsNow()
         super.onCleared()
     }

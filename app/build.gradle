@@ -14,12 +14,6 @@ if (localPropsFile.exists()) {
     }
 }
 
-def localOrDefault = { String key, String fallback ->
-    def value = localProps.getProperty(key)
-    return value != null && !value.trim().isEmpty() ? value.trim() : fallback
-}
-
-
 android {
     namespace 'com.miseservice.msmms'
     compileSdk libs.versions.compileSdk.get().toInteger()
@@ -30,11 +24,28 @@ android {
         targetSdk libs.versions.targetSdk.get().toInteger()
         versionCode 3
         versionName "0.10"
-        buildConfigField 'String', 'BLE_DEVICE_NAME', "\"${localOrDefault('ble.deviceName', 'ESP32_SWITCH')}\""
-        buildConfigField 'String', 'BLE_SERVICE_UUID', "\"${localOrDefault('ble.serviceUuid', '6f1c2a90-3d4e-4c8b-9f12-91a8c3e7d5b1')}\""
-        buildConfigField 'String', 'BLE_CHARACTERISTIC_UUID', "\"${localOrDefault('ble.characteristicUuid', 'a4d91c2e-7b3f-4a6d-9c81-2f5e8b1a9d73')}\""
-        buildConfigField 'String', 'BLE_PIN', "\"${localOrDefault('ble.pin', '2510')}\""
-        buildConfigField 'int', 'BLE_WRITE_TYPE', localOrDefault('ble.writeType', '2')
+
+        // Power / API settings from local.properties (mandatory)
+        def apiBaseUrl = localProps.getProperty('api.baseUrl')?.trim()
+        def apiBearer = localProps.getProperty('api.bearer')?.trim()
+        def chargePinRaw = localProps.getProperty('api.charge.pin')?.trim()
+        def endpointStatus = localProps.getProperty('api.endpoint.status')?.trim()
+        def endpointPower  = localProps.getProperty('api.endpoint.power')?.trim()
+        def serverToken = localProps.getProperty('server.token')?.trim() ?: "default_server_token"
+
+        if (!apiBaseUrl) throw new GradleException("Missing required local.properties entry: api.baseUrl")
+        if (!apiBearer) throw new GradleException("Missing required local.properties entry: api.bearer")
+        if (!chargePinRaw) throw new GradleException("Missing required local.properties entry: api.charge.pin")
+        if (!endpointStatus) throw new GradleException("Missing required local.properties entry: api.endpoint.status")
+        if (!endpointPower) throw new GradleException("Missing required local.properties entry: api.endpoint.power")
+
+        def chargePin = chargePinRaw.split('#')[0].trim()
+        buildConfigField("String", "API_BASE_URL",        "\"${apiBaseUrl}\"")
+        buildConfigField("String", "API_BEARER",          "\"${apiBearer}\"")
+        buildConfigField("String", "API_CHARGE_PIN",      "\"${chargePin}\"")
+        buildConfigField("String", "API_ENDPOINT_STATUS", "\"${endpointStatus}\"")
+        buildConfigField("String", "API_ENDPOINT_POWER",  "\"${endpointPower}\"")
+        buildConfigField("String", "SERVER_TOKEN",        "\"${serverToken}\"")
     }
 
     buildTypes {
@@ -91,15 +102,16 @@ dependencies {
     debugImplementation libs.compose.ui.tooling
 
     implementation libs.okhttp
+    implementation libs.retrofit
+    implementation libs.retrofit.converter.gson
     implementation libs.android.smsmms
+    implementation libs.jmdns
 
     // Room (base, KTX, compiler)
     implementation libs.room.runtime
     implementation libs.room.ktx
     ksp libs.room.compiler
 
-    // BLE
-    implementation(libs.nordic.ble)
 
     // Tests
     testImplementation libs.junit

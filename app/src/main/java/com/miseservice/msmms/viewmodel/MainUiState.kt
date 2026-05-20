@@ -1,8 +1,5 @@
 package com.miseservice.msmms.viewmodel
 
-import com.miseservice.msmms.model.BleDeviceState
-import com.miseservice.msmms.model.BleRelayState
-
 /**
  * État de l’interface principale pour l'envoi de SMS OVH.
  *
@@ -50,21 +47,25 @@ data class MainUiState(
     val errorMessage: String? = null,
     val feedbackMessage: String? = null,
     val feedbackType: FeedbackType = FeedbackType.NONE,
-    val bleMinBattery: Int = 20,
-    val bleMaxBattery: Int = 80,
-    val bleDeviceState: BleDeviceState = BleDeviceState.Idle,
-    val bleRelayState: BleRelayState = BleRelayState.Unknown,
-    val bleWifiEnabled: Boolean = false,
-    val bleDeviceAddress: String = "",
-    val blePin: String = "",
-    val bleErrorMessage: String? = null,
-    val bleRelayLoading: Boolean = false,
-    val bleWifiLoading: Boolean = false,
-    val switchCommandStatusMessage: String? = null,
     val smsDeniedDialogMode: SmsDeniedDialogMode = SmsDeniedDialogMode.NONE,
     val smsDeniedForSendAction: Boolean = false,
     val batteryOptimizationDialogVisible: Boolean = false,
-    val simNetworkAvailable: Boolean = false
+    val batteryOptimizationEnabled: Boolean = false,
+    val simNetworkAvailable: Boolean = false,
+    // ── Power / Switch ──────────────────────────────────────────────────────
+    val powerToken: String = "",
+    val powerBaseUrl: String = "",
+    val powerResolvedIp: String? = null,
+    val isPowerIpDiscoveryLoading: Boolean = false,
+    val powerSwitchNumber: String = "",
+    val powerBatteryMin: String = "20",
+    val powerBatteryMax: String = "80",
+    val powerStatusState: String? = null,
+    val powerStatusValue: Int? = null,
+    val powerManagerConnected: Boolean = false,
+    val powerLastAction: String? = null,
+    val deviceBatteryLevel: Int? = null,
+    val powerSnackbarMessage: String? = null
 ) {
     val canSendLocalSms: Boolean
         get() = serviceActive && !isLoading && recipient.isNotBlank() && message.isNotBlank()

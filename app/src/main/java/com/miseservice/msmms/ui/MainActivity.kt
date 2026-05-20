@@ -30,15 +30,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var requestMultiplePermissions: ActivityResultLauncher<Array<String>>
     private lateinit var requestIgnoreBatteryOptimization: ActivityResultLauncher<Intent>
     private var pendingSendSmsAfterPermission: Boolean = false
-    private val bluetoothStateReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            if (intent?.action != BluetoothAdapter.ACTION_STATE_CHANGED) return
-            val state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR)
-            if (state == BluetoothAdapter.STATE_TURNING_OFF || state == BluetoothAdapter.STATE_OFF) {
-                viewModel.disconnectBleSilently()
-            }
-        }
-    }
 
     // Ouvre la page des paramètres de l'application pour accorder la permission manuellement
     private fun openAppSettings() {
@@ -55,10 +46,6 @@ class MainActivity : AppCompatActivity() {
             Manifest.permission.ACCESS_FINE_LOCATION,
             Manifest.permission.ACCESS_COARSE_LOCATION
         )
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-            required.add(Manifest.permission.BLUETOOTH_CONNECT)
-            required.add(Manifest.permission.BLUETOOTH_SCAN)
-        }
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
             required.add(Manifest.permission.POST_NOTIFICATIONS)
         }
@@ -74,10 +61,6 @@ class MainActivity : AppCompatActivity() {
             Manifest.permission.ACCESS_FINE_LOCATION,
             Manifest.permission.ACCESS_COARSE_LOCATION
         )
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-            required.add(Manifest.permission.BLUETOOTH_CONNECT)
-            required.add(Manifest.permission.BLUETOOTH_SCAN)
-        }
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
             required.add(Manifest.permission.POST_NOTIFICATIONS)
         }
@@ -95,6 +78,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun maybeRequestBatteryOptimizationExemption() {
+        viewModel.refreshBatteryOptimizationState()
         BatteryOptimizationHelper.buildIgnoreBatteryOptimizationIntent(this) ?: return
         viewModel.showBatteryOptimizationDialog()
     }
@@ -107,6 +91,7 @@ class MainActivity : AppCompatActivity() {
             ActivityResultContracts.StartActivityForResult()
         ) {
             val granted = BatteryOptimizationHelper.isIgnoringBatteryOptimizations(this)
+            viewModel.refreshBatteryOptimizationState()
             if (granted) {
                 android.widget.Toast.makeText(this, getString(R.string.battery_optimization_disabled_success), android.widget.Toast.LENGTH_SHORT).show()
             }
@@ -163,6 +148,7 @@ class MainActivity : AppCompatActivity() {
                         viewModel.dismissBatteryOptimizationDialog()
                         BatteryOptimizationHelper.buildIgnoreBatteryOptimizationIntent(this)
                             ?.let { requestIgnoreBatteryOptimization.launch(it) }
+                        viewModel.refreshBatteryOptimizationState()
                     }
                 )
             }
@@ -170,15 +156,11 @@ class MainActivity : AppCompatActivity() {
 
         // Supprimé : checkAndRequestPermissions() est maintenant déclenché par MainScreen via le pre-prompt
         // checkAndRequestPermissions()
-
-        registerReceiver(
-            bluetoothStateReceiver,
-            IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED)
-        )
     }
 
     override fun onResume() {
         super.onResume()
+        viewModel.refreshBatteryOptimizationState()
         viewModel.refreshNetworkInfo()
     }
 
@@ -188,8 +170,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        runCatching { unregisterReceiver(bluetoothStateReceiver) }
-        viewModel.disconnectBleSilently()
         super.onDestroy()
     }
 }

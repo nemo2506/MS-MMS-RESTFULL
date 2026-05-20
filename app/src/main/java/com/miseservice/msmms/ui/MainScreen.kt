@@ -1,14 +1,21 @@
 package com.miseservice.msmms.ui
 
 import android.Manifest
-import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
-import android.util.Log
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -16,45 +23,62 @@ import androidx.compose.material.icons.outlined.AddCircle
 import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material.icons.outlined.PowerSettingsNew
 import androidx.compose.material.icons.outlined.SettingsEthernet
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.core.net.toUri
+import com.miseservice.msmms.BuildConfig
 import com.miseservice.msmms.R
-import com.miseservice.msmms.model.BleRuntimeConfig
-import com.miseservice.msmms.model.BleDeviceState
-import com.miseservice.msmms.model.BleRelayState
 import com.miseservice.msmms.ui.components.ApiNetworkSection
-import com.miseservice.msmms.ui.components.BleConfigSection
 import com.miseservice.msmms.ui.components.OvhApiConfigSection
 import com.miseservice.msmms.ui.components.OvhSmsFormSection
 import com.miseservice.msmms.ui.components.SendSmsSection
 import com.miseservice.msmms.ui.components.ServiceStatusRow
-import com.miseservice.msmms.ui.components.smsOvhButtonColors
-import com.miseservice.msmms.ui.components.smsOvhTextFieldColors
 import com.miseservice.msmms.ui.components.dialogs.PermissionActionDialog
 import com.miseservice.msmms.ui.components.dialogs.SystemStatusDialog
+import com.miseservice.msmms.ui.components.smsOvhButtonColors
+import com.miseservice.msmms.ui.components.smsOvhTextFieldColors
 import com.miseservice.msmms.util.NetworkInfoProvider
 import com.miseservice.msmms.viewmodel.FeedbackType
 import com.miseservice.msmms.viewmodel.MainViewModel
 import com.miseservice.msmms.viewmodel.SmsDeniedDialogMode
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
-import androidx.compose.foundation.shape.RoundedCornerShape
 import kotlinx.coroutines.delay
 
 private data class MainTabItem(
@@ -74,20 +98,20 @@ fun MainScreen(
     onOpenAppSettings: () -> Unit = {},
     onRequestBatteryOptimization: () -> Unit = {}
 ) {
+    val context = LocalContext.current
+
     fun withStatusPrefix(message: String, type: FeedbackType): String {
         val trimmed = message.trim()
         return when (type) {
-            FeedbackType.SUCCESS -> if (trimmed.startsWith("✅")) trimmed else "✅ $trimmed"
-            FeedbackType.ERROR -> if (trimmed.startsWith("❌")) trimmed else "❌ $trimmed"
+            FeedbackType.SUCCESS -> trimmed
+            FeedbackType.ERROR -> trimmed
             else -> trimmed
         }
     }
 
-    val context = LocalContext.current
     val focusManager = LocalFocusManager.current
     val uiState = viewModel.uiState.collectAsState().value
-    var showBlePinDialog by rememberSaveable { mutableStateOf(false) }
-    var blePinInput by rememberSaveable { mutableStateOf("") }
+    val snackbarHostState = remember { SnackbarHostState() }
     var showStartupPermissionsDialog by rememberSaveable { mutableStateOf(false) }
 
     // Externaliser la copie via le ViewModel (MVVM-compliant)
@@ -116,9 +140,9 @@ fun MainScreen(
             contentDescription = stringResource(R.string.tab_api)
         ),
         MainTabItem(
-            title = stringResource(R.string.tab_bluetooth_power_switch),
+            title = stringResource(R.string.tab_power_switch),
             icon = Icons.Outlined.PowerSettingsNew,
-            contentDescription = stringResource(R.string.tab_bluetooth_power_switch)
+            contentDescription = stringResource(R.string.tab_power_switch)
         )
     )
     val selectedTabIndex = uiState.selectedTabIndex.coerceIn(0, tabs.lastIndex)
@@ -132,14 +156,6 @@ fun MainScreen(
         } else {
             viewModel.refreshHostIp(NetworkInfoProvider.getHostIp())
         }
-    }
-
-    // Gestion des permissions
-    val bluetoothGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED &&
-                ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
-    } else {
-        true
     }
 
     // Le workflow des permissions est désormais centralisé via MainActivity.
@@ -157,7 +173,10 @@ fun MainScreen(
             Manifest.permission.READ_PHONE_STATE
         ) == PackageManager.PERMISSION_GRANTED
         val notificationGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
         } else {
             true
         }
@@ -165,7 +184,7 @@ fun MainScreen(
         viewModel.setLocationPermissionGranted(locationGranted)
 
         // Si une permission critique manque, on affiche le dialogue de groupe au démarrage
-        if (!locationGranted || !smsGranted || !phoneStateGranted || !bluetoothGranted || !notificationGranted) {
+        if (!locationGranted || !smsGranted || !phoneStateGranted || !notificationGranted) {
             showStartupPermissionsDialog = true
         }
     }
@@ -217,7 +236,7 @@ fun MainScreen(
     }
 
     // Dialogue optimisation batterie piloté par le ViewModel
-    if (uiState.batteryOptimizationDialogVisible) {
+    if (uiState.batteryOptimizationDialogVisible && uiState.batteryOptimizationEnabled) {
         PermissionActionDialog(
             title = stringResource(R.string.battery_optimization_title),
             message = stringResource(R.string.battery_optimization_message),
@@ -228,81 +247,6 @@ fun MainScreen(
         )
     }
 
-    if (showBlePinDialog) {
-        val screenHeight = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp.dp
-        Dialog(
-            onDismissRequest = { showBlePinDialog = false },
-            properties = DialogProperties(usePlatformDefaultWidth = false)
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(screenHeight),
-                contentAlignment = Alignment.BottomCenter
-            ) {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    color = MaterialTheme.colorScheme.surface,
-                    shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 28.dp)
-                    ) {
-                        Text(
-                            text = stringResource(R.string.bluetooth_pin_dialog_title),
-                            color = colorResource(id = R.color.white),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 17.sp
-                        )
-                        Spacer(Modifier.height(16.dp))
-                        TextField(
-                            value = blePinInput,
-                            onValueChange = { blePinInput = it.filter(Char::isDigit).take(8) },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
-                            label = {
-                                Text(
-                                    stringResource(R.string.bluetooth_pin_dialog_label),
-                                    color = colorResource(id = R.color.white)
-                                )
-                            },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            colors = smsOvhTextFieldColors()
-                        )
-                        Spacer(Modifier.height(24.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            TextButton(
-                                onClick = { showBlePinDialog = false },
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Text(
-                                    stringResource(R.string.bluetooth_pin_dialog_cancel),
-                                    color = colorResource(id = R.color.white)
-                                )
-                            }
-                            Spacer(Modifier.padding(horizontal = 8.dp))
-                            Button(
-                                onClick = {
-                                    showBlePinDialog = false
-                                    if (blePinInput.isNotBlank()) {
-                                        viewModel.connectBleDevice(blePinInput)
-                                    }
-                                },
-                                modifier = Modifier.weight(1f),
-                                colors = smsOvhButtonColors()
-                            ) {
-                                Text(stringResource(R.string.bluetooth_pin_dialog_confirm))
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     // Récupération de la localisation réseau (externaliser via ViewModel)
 
     LaunchedEffect(uiState.locationPermissionGranted) {
@@ -311,24 +255,37 @@ fun MainScreen(
         }
     }
 
+    LaunchedEffect(uiState.powerSnackbarMessage) {
+        uiState.powerSnackbarMessage?.let { message ->
+            snackbarHostState.showSnackbar(
+                message = message,
+                withDismissAction = true,
+                duration = SnackbarDuration.Short
+            )
+            viewModel.consumePowerSnackbar()
+        }
+    }
+
     // Récupération du token API sécurisé
     val token by viewModel.token.collectAsState()
-    val snackbarHostState = remember { SnackbarHostState() }
-
     // La surveillance SIM est gérée automatiquement par le ViewModel
     // Plus besoin de boucle dans la UI ✓ (MVVM-compliant)
 
 
     // Dialogue état système persistant (4 conditions)
-    val bleConnected = uiState.bleDeviceState == com.miseservice.msmms.model.BleDeviceState.Connected
-    val hasSystemIssue = !(uiState.serviceActive && uiState.isIpValid && bleConnected && uiState.simNetworkAvailable)
+    val hasSystemIssue = !(
+            uiState.serviceActive &&
+                    uiState.isIpValid &&
+                    uiState.simNetworkAvailable &&
+                    uiState.powerManagerConnected
+            )
     val systemIssueSignature = remember(
         uiState.serviceActive,
         uiState.isIpValid,
-        bleConnected,
-        uiState.simNetworkAvailable
+        uiState.simNetworkAvailable,
+        uiState.powerManagerConnected
     ) {
-        "svc:${uiState.serviceActive}|net:${uiState.isIpValid}|ble:$bleConnected|sim:${uiState.simNetworkAvailable}"
+        "svc:${uiState.serviceActive}|net:${uiState.isIpValid}|sim:${uiState.simNetworkAvailable}|pwr:${uiState.powerManagerConnected}"
     }
     var dismissedSystemIssueSignature by rememberSaveable { mutableStateOf<String?>(null) }
 
@@ -339,18 +296,12 @@ fun MainScreen(
 
     if (hasSystemIssue && dismissedSystemIssueSignature != systemIssueSignature) {
         SystemStatusDialog(
-            serviceActive = uiState.serviceActive,
+            serviceActive = uiState.serviceToggleTargetActive ?: uiState.serviceActive,
             networkConnected = uiState.isIpValid,
-            bluetoothConnected = bleConnected,
+            powerManagerConnected = uiState.powerManagerConnected,
             simNetworkAvailable = uiState.simNetworkAvailable,
             onDismiss = { dismissedSystemIssueSignature = systemIssueSignature }
         )
-    }
-
-    LaunchedEffect(uiState.switchCommandStatusMessage) {
-        val snackbarMessage = uiState.switchCommandStatusMessage ?: return@LaunchedEffect
-        snackbarHostState.showSnackbar(message = snackbarMessage)
-        viewModel.consumeSwitchCommandStatusMessage()
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -370,6 +321,9 @@ fun MainScreen(
                     )
                 )
             },
+            snackbarHost = {
+                SnackbarHost(hostState = snackbarHostState)
+            },
             containerColor = MaterialTheme.colorScheme.background
         ) { paddingValues ->
             Column(
@@ -377,258 +331,473 @@ fun MainScreen(
                     .fillMaxSize()
                     .padding(paddingValues)
             ) {
-            // Bandeau de retour (succès / erreur)
-            uiState.feedbackMessage?.let { feedbackMessage ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    shape = MaterialTheme.shapes.medium,
-                    colors = CardDefaults.cardColors(
-                        containerColor = when (uiState.feedbackType) {
-                            FeedbackType.SUCCESS -> colorResource(id = R.color.smsovh_primary).copy(alpha = 0.18f)
-                            FeedbackType.ERROR -> MaterialTheme.colorScheme.error.copy(alpha = 0.18f)
-                            FeedbackType.NONE -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
-                        }
-                    )
-                ) {
-                    Text(
-                        text = withStatusPrefix(feedbackMessage, uiState.feedbackType),
-                        color = colorResource(id = R.color.white),
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 14.sp,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
-                    )
-                }
-            }
+                // Bandeau de retour (succès / erreur)
+                uiState.feedbackMessage?.let { feedbackMessage ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        shape = MaterialTheme.shapes.medium,
+                        colors = CardDefaults.cardColors(
+                            containerColor = when (uiState.feedbackType) {
+                                FeedbackType.SUCCESS -> colorResource(id = R.color.smsovh_primary).copy(
+                                    alpha = 0.18f
+                                )
 
-            // Statut du service (pill + switch) — fixe, hors scroll
-            ServiceStatusRow(
-                uiState = uiState,
-                onCheckedChange = { checked -> viewModel.setServiceActive(checked) },
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-            )
-
-            // Barre d'onglets M3 — fixe, ne scrolle pas avec le contenu
-            TabRow(
-                selectedTabIndex = selectedTabIndex,
-                containerColor = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.primary
-            ) {
-                tabs.forEachIndexed { index, tab ->
-                    Tab(
-                        selected = selectedTabIndex == index,
-                        onClick = { viewModel.setSelectedTab(index) },
-                        text = {
-                            Text(
-                                text = tab.title,
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Normal
-                            )
-                        },
-                        icon = {
-                            Icon(
-                                imageVector = tab.icon,
-                                contentDescription = tab.contentDescription,
-                                modifier = Modifier.size(22.dp)
-                            )
-                        }
-                    )
-                }
-            }
-
-            // Contenu de chaque onglet — indépendamment scrollable
-            when (selectedTabIndex) {
-
-                // ─────────────────── Onglet 0 : Composer SMS ───────────────────
-                0 -> Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    ElevatedCard(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = MaterialTheme.shapes.large
+                                FeedbackType.ERROR -> MaterialTheme.colorScheme.error.copy(alpha = 0.18f)
+                                FeedbackType.NONE -> MaterialTheme.colorScheme.surfaceVariant.copy(
+                                    alpha = 0.45f
+                                )
+                            }
+                        )
                     ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            OvhSmsFormSection(
-                                senderId = senderId,
-                                recipient = recipient,
-                                message = message,
-                                onSenderIdChange = { viewModel.setSenderId(it.take(11)) },
-                                onRecipientChange = { viewModel.setRecipient(it) },
-                                onMessageChange = { viewModel.setMessage(it) }
-                            )
-                        }
+                        Text(
+                            text = withStatusPrefix(feedbackMessage, uiState.feedbackType),
+                            color = colorResource(id = R.color.white),
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 14.sp,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                        )
                     }
-                    ElevatedCard(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = MaterialTheme.shapes.large
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            SendSmsSection(
-                                enabled = uiState.canSendLocalSms,
-                                hasSendSmsPermission = hasSendSmsPermission,
-                                onRequestSmsPermission = { onRequestSmsPermission(true) },
-                                onSendSmsRequested = onSendSmsRequested
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
                 }
 
-                // ─────────────────── Onglet 1 : Config OVH ─────────────────────
-                1 -> Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                // Statut du service (pill + switch) — fixe, hors scroll
+                ServiceStatusRow(
+                    uiState = uiState,
+                    onCheckedChange = { checked -> viewModel.setServiceActive(checked) },
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+
+                // Barre d'onglets M3 — fixe, ne scrolle pas avec le contenu
+                TabRow(
+                    selectedTabIndex = selectedTabIndex,
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.primary
                 ) {
-                    ElevatedCard(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = MaterialTheme.shapes.large
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            OvhApiConfigSection(
-                                ovhAppKey = uiState.ovhAppKey,
-                                ovhAppSecret = uiState.ovhAppSecret,
-                                ovhConsumerKey = uiState.ovhConsumerKey,
-                                ovhServiceName = uiState.ovhServiceName,
-                                ovhEndpoint = uiState.ovhEndpoint,
-                                ovhCountryPrefix = uiState.ovhCountryPrefix,
-                                onOvhAppKeyChange = { viewModel.setOvhAppKey(it) },
-                                onOvhAppSecretChange = { viewModel.setOvhAppSecret(it) },
-                                onOvhConsumerKeyChange = { viewModel.setOvhConsumerKey(it) },
-                                onOvhServiceNameChange = { viewModel.setOvhServiceName(it) },
-                                onOvhEndpointChange = { viewModel.setOvhEndpoint(it) },
-                                onOvhCountryPrefixChange = { viewModel.setOvhCountryPrefix(it) }
-                            )
-                        }
+                    tabs.forEachIndexed { index, tab ->
+                        Tab(
+                            selected = selectedTabIndex == index,
+                            onClick = { viewModel.setSelectedTab(index) },
+                            text = {
+                                Text(
+                                    text = tab.title,
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Normal
+                                )
+                            },
+                            icon = {
+                                Icon(
+                                    imageVector = tab.icon,
+                                    contentDescription = tab.contentDescription,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                        )
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
                 }
 
-                // ─────────────────── Onglet 2 : API REST ───────────────────────
-                2 -> Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    ElevatedCard(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = MaterialTheme.shapes.large
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            ApiNetworkSection(
-                                uiState = uiState,
-                                token = token,
-                                onRestPortInputChange = { viewModel.setRestPortInput(it) },
-                                onRestPortCommit = {
-                                    if (viewModel.commitRestPort()) {
-                                        focusManager.clearFocus()
-                                    }
-                                },
-                                onResetToken = { viewModel.resetToken() },
-                                onCopy = copyToClipboard,
-                                onRefreshNetwork = { viewModel.refreshNetworkInfo() }
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
+                // Contenu de chaque onglet — indépendamment scrollable
+                when (selectedTabIndex) {
 
-                // ─────────────────── Onglet 3 : Bluetooth / Power ──────────────
-                3 -> Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    if (!bluetoothGranted) {
-                        Card(
+                    // ─────────────────── Onglet 0 : Composer SMS ───────────────────
+                    0 -> Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        ElevatedCard(
                             modifier = Modifier.fillMaxWidth(),
-                            shape = MaterialTheme.shapes.medium,
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.errorContainer
-                            )
+                            shape = MaterialTheme.shapes.large
                         ) {
-                            Text(
-                                text = stringResource(R.string.bluetooth_permission_denied_banner),
-                                color = MaterialTheme.colorScheme.onErrorContainer,
-                                fontWeight = FontWeight.SemiBold,
-                                style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
-                            )
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                OvhSmsFormSection(
+                                    senderId = senderId,
+                                    recipient = recipient,
+                                    message = message,
+                                    onSenderIdChange = { viewModel.setSenderId(it.take(11)) },
+                                    onRecipientChange = { viewModel.setRecipient(it) },
+                                    onMessageChange = { viewModel.setMessage(it) }
+                                )
+                            }
                         }
+                        ElevatedCard(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = MaterialTheme.shapes.large
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                SendSmsSection(
+                                    enabled = uiState.canSendLocalSms,
+                                    hasSendSmsPermission = hasSendSmsPermission,
+                                    onRequestSmsPermission = { onRequestSmsPermission(true) },
+                                    onSendSmsRequested = onSendSmsRequested
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
                     }
-                    ElevatedCard(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = MaterialTheme.shapes.large
+
+                    // ─────────────────── Onglet 1 : Config OVH ─────────────────────
+                    1 -> Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            BleConfigSection(
-                                batteryMinPercent = uiState.bleMinBattery,
-                                batteryMaxPercent = uiState.bleMaxBattery,
-                                isConnected = uiState.bleDeviceState == BleDeviceState.Connected,
-                                isLoading = uiState.bleDeviceState == BleDeviceState.Scanning
-                                        || uiState.bleDeviceState is BleDeviceState.Found
-                                        || uiState.bleDeviceState == BleDeviceState.Connecting,
-                                relayLoading = uiState.bleRelayLoading,
-                                wifiLoading = uiState.bleWifiLoading,
-                                relayEnabled = uiState.bleRelayState == BleRelayState.On,
-                                wifiEnabled = uiState.bleWifiEnabled,
-                                connectionStatus = when (uiState.bleDeviceState) {
-                                    BleDeviceState.Idle -> stringResource(R.string.ble_status_idle)
-                                    BleDeviceState.Scanning -> stringResource(R.string.ble_status_scanning)
-                                    is BleDeviceState.Found -> stringResource(R.string.ble_status_found, uiState.bleDeviceState.name)
-                                    BleDeviceState.NotFound -> stringResource(R.string.ble_status_not_found)
-                                    BleDeviceState.Connecting -> stringResource(R.string.ble_status_connecting)
-                                    BleDeviceState.Connected -> stringResource(R.string.ble_status_connected)
-                                    BleDeviceState.InvalidPin -> stringResource(R.string.ble_status_invalid_pin)
-                                    BleDeviceState.Timeout -> stringResource(R.string.ble_status_timeout)
-                                    BleDeviceState.ServiceNotFound -> stringResource(R.string.ble_status_service_not_found)
-                                    BleDeviceState.CharacteristicNotFound -> stringResource(R.string.ble_status_characteristic_not_found)
-                                    is BleDeviceState.Error -> stringResource(R.string.ble_status_error, uiState.bleDeviceState.message)
-                                    BleDeviceState.Disconnected -> stringResource(R.string.ble_status_disconnected)
-                                },
-                                errorMessage = uiState.bleErrorMessage,
-                                onBatteryMinChange = { viewModel.setBleBatteryMin(it) },
-                                onBatteryMaxChange = { viewModel.setBleBatteryMax(it) },
-                                onBatteryMinCommit = { focusManager.clearFocus() },
-                                onBatteryMaxCommit = { focusManager.clearFocus() },
-                                onConnect = {
-                                    blePinInput = if (uiState.blePin.isBlank()) BleRuntimeConfig.pin else uiState.blePin
-                                    showBlePinDialog = true
-                                },
-                                onDisconnect = { viewModel.disconnectBle() },
-                                onRelaySwitchChange = { isOn ->
-                                    if (isOn) viewModel.sendRelayOnCommand() else viewModel.sendRelayOffCommand()
-                                },
-                                onWifiSwitchChange = { isOn ->
-                                    if (isOn) viewModel.sendWifiOnCommand() else viewModel.sendWifiOffCommand()
-                                }
-                            )
+                        ElevatedCard(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = MaterialTheme.shapes.large
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                OvhApiConfigSection(
+                                    ovhAppKey = uiState.ovhAppKey,
+                                    ovhAppSecret = uiState.ovhAppSecret,
+                                    ovhConsumerKey = uiState.ovhConsumerKey,
+                                    ovhServiceName = uiState.ovhServiceName,
+                                    ovhEndpoint = uiState.ovhEndpoint,
+                                    ovhCountryPrefix = uiState.ovhCountryPrefix,
+                                    onOvhAppKeyChange = { viewModel.setOvhAppKey(it) },
+                                    onOvhAppSecretChange = { viewModel.setOvhAppSecret(it) },
+                                    onOvhConsumerKeyChange = { viewModel.setOvhConsumerKey(it) },
+                                    onOvhServiceNameChange = { viewModel.setOvhServiceName(it) },
+                                    onOvhEndpointChange = { viewModel.setOvhEndpoint(it) },
+                                    onOvhCountryPrefixChange = { viewModel.setOvhCountryPrefix(it) }
+                                )
+                            }
                         }
+                        Spacer(modifier = Modifier.height(8.dp))
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // ─────────────────── Onglet 2 : API REST ───────────────────────
+                    2 -> Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        ElevatedCard(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = MaterialTheme.shapes.large
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                ApiNetworkSection(
+                                    uiState = uiState,
+                                    token = token,
+                                    onRestPortInputChange = { viewModel.setRestPortInput(it) },
+                                    onRestPortCommit = {
+                                        if (viewModel.commitRestPort()) {
+                                            focusManager.clearFocus()
+                                        }
+                                    },
+                                    onResetToken = { viewModel.resetToken() },
+                                    onCopy = copyToClipboard,
+                                    onRefreshNetwork = { viewModel.refreshNetworkInfo() }
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+
+                    // ─────────────────── Onglet 3 : Power ─────────────────────
+                    3 -> Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Button(
+                            onClick = { viewModel.triggerPowerCharge() },
+                            colors = smsOvhButtonColors(),
+                            shape = RoundedCornerShape(0.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(text = stringResource(R.string.power_charge_button))
+                        }
+
+                        // ── Carte Configuration ──────────────────────────────────
+                        ElevatedCard(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = MaterialTheme.shapes.large
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.power_config_title),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = colorResource(id = R.color.smsovh_primary),
+                                    fontWeight = FontWeight.Bold
+                                )
+
+                                // URL + SWITCH NUMBER alignés sur une seule ligne
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    TextField(
+                                        value = uiState.powerBaseUrl,
+                                        onValueChange = { viewModel.setPowerBaseUrl(it) },
+                                        label = { Text(stringResource(R.string.power_url_label)) },
+                                        placeholder = { Text(stringResource(R.string.power_url_placeholder)) },
+                                        trailingIcon = {
+                                            if (uiState.isPowerIpDiscoveryLoading) {
+                                                CircularProgressIndicator(
+                                                    modifier = Modifier.size(16.dp),
+                                                    strokeWidth = 2.dp
+                                                )
+                                            }
+                                        },
+                                        supportingText = {
+                                            val resolvedIp = uiState.powerResolvedIp
+                                            val supporting =
+                                                if (uiState.isPowerIpDiscoveryLoading) {
+                                                    stringResource(R.string.service_status_updating)
+                                                } else if (resolvedIp.isNullOrBlank()) {
+                                                    stringResource(R.string.power_url_supporting_text)
+                                                } else {
+                                                    stringResource(
+                                                        R.string.power_url_resolved_ip,
+                                                        resolvedIp
+                                                    )
+                                                }
+                                            Text(supporting)
+                                        },
+                                        singleLine = true,
+                                        colors = smsOvhTextFieldColors(),
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                                        modifier = Modifier.weight(0.8f)
+                                    )
+
+                                    TextField(
+                                        value = uiState.powerSwitchNumber,
+                                        onValueChange = { viewModel.setPowerSwitchNumber(it) },
+                                        label = { Text(stringResource(R.string.power_switch_number_label)) },
+                                        singleLine = true,
+                                        colors = smsOvhTextFieldColors(),
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                        modifier = Modifier.weight(0.2f)
+                                    )
+                                }
+                                Button(
+                                    onClick = { viewModel.resetPowerIpDiscovery() },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = colorResource(id = R.color.smsovh_primary).copy(
+                                            alpha = 0.15f
+                                        ),
+                                        contentColor = colorResource(id = R.color.smsovh_primary)
+                                    ),
+                                    shape = RoundedCornerShape(8.dp),
+                                    enabled = !uiState.isPowerIpDiscoveryLoading
+                                ) {
+                                    if (uiState.isPowerIpDiscoveryLoading) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(18.dp),
+                                            strokeWidth = 2.dp,
+                                            color = colorResource(id = R.color.smsovh_primary)
+                                        )
+                                        Spacer(Modifier.width(8.dp))
+                                    }
+                                    Text(
+                                        text = stringResource(R.string.power_reset_discovery_button),
+                                        style = MaterialTheme.typography.labelLarge,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                                TextField(
+                                    value = uiState.powerToken,
+                                    onValueChange = { viewModel.setPowerToken(it) },
+                                    label = { Text(stringResource(R.string.power_token_label)) },
+                                    placeholder = { Text(stringResource(R.string.power_token_placeholder)) },
+                                    singleLine = true,
+                                    colors = smsOvhTextFieldColors(),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                // NIVEAU — Min & Max sur une ligne
+                                Text(
+                                    text = stringResource(R.string.power_battery_level_label),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = colorResource(id = R.color.smsovh_primary),
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    TextField(
+                                        value = uiState.powerBatteryMin,
+                                        onValueChange = { viewModel.setPowerBatteryMin(it) },
+                                        label = { Text(stringResource(R.string.power_battery_min_label)) },
+                                        singleLine = true,
+                                        colors = smsOvhTextFieldColors(),
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    TextField(
+                                        value = uiState.powerBatteryMax,
+                                        onValueChange = { viewModel.setPowerBatteryMax(it) },
+                                        label = { Text(stringResource(R.string.power_battery_max_label)) },
+                                        singleLine = true,
+                                        colors = smsOvhTextFieldColors(),
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                            }
+                        }
+
+                        // ── Carte Endpoints ─────────────────────────────────────
+                        ElevatedCard(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = MaterialTheme.shapes.large
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.power_endpoints_title),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = colorResource(id = R.color.smsovh_primary),
+                                    fontWeight = FontWeight.Bold
+                                )
+
+                                val pin = uiState.powerSwitchNumber.trim()
+                                    .ifBlank { BuildConfig.API_CHARGE_PIN }
+                                val baseUrl =
+                                    uiState.powerBaseUrl.trim().ifBlank { BuildConfig.API_BASE_URL }
+                                val displayBaseUrl =
+                                    if (baseUrl.startsWith("http://") || baseUrl.startsWith("https://")) {
+                                        baseUrl.trimEnd('/')
+                                    } else {
+                                        "http://${baseUrl.trimEnd('/')}"
+                                    }
+                                val statusEndpoint =
+                                    BuildConfig.API_ENDPOINT_STATUS.replace("[PIN]", pin)
+                                val powerEndpoint =
+                                    BuildConfig.API_ENDPOINT_POWER.replace("[PIN]", pin)
+
+                                // STATUS endpoint
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.power_endpoint_status_label),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = colorResource(id = R.color.smsovh_primary),
+                                        fontWeight = FontWeight.SemiBold,
+                                        modifier = Modifier.width(56.dp)
+                                    )
+                                    Text(
+                                        text = "$displayBaseUrl$statusEndpoint",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+                                // POWER endpoint
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.power_endpoint_power_label),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = colorResource(id = R.color.smsovh_primary),
+                                        fontWeight = FontWeight.SemiBold,
+                                        modifier = Modifier.width(56.dp)
+                                    )
+                                    Text(
+                                        text = "$displayBaseUrl$powerEndpoint",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.power_device_battery_label),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = colorResource(id = R.color.smsovh_primary),
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Text(
+                                        text = uiState.deviceBatteryLevel?.let { "$it%" } ?: "--",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+
+                                uiState.powerLastAction?.let { action ->
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            text = stringResource(R.string.power_last_action_label),
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = colorResource(id = R.color.smsovh_primary),
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                        Text(
+                                            text = action,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // ── Carte optimisation batterie système ─────────────────
+                        if (uiState.batteryOptimizationEnabled) {
+                            ElevatedCard(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = MaterialTheme.shapes.large
+                            ) {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                    Text(
+                                        text = stringResource(R.string.battery_optimization_message),
+                                        color = colorResource(id = R.color.white),
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Button(
+                                        onClick = { viewModel.showBatteryOptimizationDialog() },
+                                        colors = smsOvhButtonColors(),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Text(stringResource(R.string.settings))
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
                 }
-            }
             }
         }
-
-        // Snackbar fixé en haut pour les commandes Bluetooth, indépendant des dialogues.
-        SnackbarHost(
-            hostState = snackbarHostState,
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = 84.dp, start = 16.dp, end = 16.dp)
-        )
     }
 }
-

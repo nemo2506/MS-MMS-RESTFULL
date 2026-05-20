@@ -31,7 +31,7 @@
     <string name="sender_id_not_allowed">Sender ID non autorisé</string>
     <string name="app_name">MS-MMS</string>
     <string name="sim_absente_ou_invalide">"Aucune carte SIM détectée ou SIM non prête. Impossible d'envoyer le SMS."</string>
-    <string name="token_copied">✅ Token copié</string>
+    <string name="token_copied"> Token copié</string>
     <string name="api_network_info_title">CONNEXION</string>
     <string name="network_not_connected">Non connectée</string>
     <string name="connected_ip_label">IP connectée</string>
@@ -48,7 +48,7 @@
     <string name="system_status_dialog_subtitle">Une ou plusieurs conditions sont requises pour le bon fonctionnement.</string>
     <string name="system_status_service">Service REST actif</string>
     <string name="system_status_network">Réseau Wi-Fi connecté</string>
-    <string name="system_status_bluetooth">Bluetooth connecté</string>
+    <string name="system_status_chargeur">POWER MANAGER connecté</string>
     <string name="system_status_sim">Réseau SIM disponible</string>
     <string name="system_status_vu">VU</string>
     <string name="endpoint_send_label">POST /api/send-message</string>
@@ -160,7 +160,7 @@
     <string name="tab_compose_plus">SMS</string>
     <string name="tab_ovh">OVH</string>
     <string name="tab_api">API</string>
-    <string name="tab_bluetooth_power_switch">Power</string>
+    <string name="tab_power_switch">Power</string>
     <string name="send_via_ovh_api">Envoyer via API</string>
     <string name="ovh_sms_sent_success">✅ SMS envoyé avec succès.</string>
     <string name="ovh_invalid_recipient">Numéro destinataire invalide.</string>
@@ -176,58 +176,41 @@
     <string name="ovh_credentials_help_text">Clés : api.ovh.com/createToken - droit POST sms jobs</string>
 
     <!-- Startup -->
-    <string name="startup_permissions_message">Pour fonctionner correctement, l\'application nécessite les permissions SMS (envoi), Localisation (lecture SSID Wi-Fi), État du téléphone (réseau SIM), Bluetooth (gestion de la charge) et Notifications (statut du service).</string>
+    <string name="startup_permissions_message">Pour fonctionner correctement, l\'application nécessite les permissions SMS (envoi), Localisation (lecture SSID Wi-Fi), État du téléphone (réseau SIM), POWER MANAGER (gestion de la charge) et Notifications (statut du service).</string>
     <string name="startup_permissions_title">Configuration nécessaire</string>
 
-    <string name="bluetooth_section_title">GESTION DE CHARGE</string>
-    <string name="bluetooth_status_connected">Connecté</string>
-    <string name="bluetooth_status_disconnected">Déconnecté</string>
-    <string name="bluetooth_status_connecting">Connexion en cours…</string>
-    <string name="bluetooth_action_connect">CONNECT</string>
-    <string name="bluetooth_action_disconnect">DISCONNECT</string>
-    <string name="bluetooth_relay_label">⚡ Charge</string>
-
-    <string name="bluetooth_wifi_label">Serveur HTTP</string>
-    <string name="bluetooth_battery_charge_title">🔋 BATTERIE</string>
-    <string name="bluetooth_battery_min_label">Min</string>
-    <string name="bluetooth_battery_max_label">Max</string>
-    <string name="bluetooth_error_invalid_pin">❌ PIN Bluetooth incorrect.</string>
-    <string name="bluetooth_error_device_not_found">❌ Périphérique Bluetooth introuvable.</string>
-    <string name="bluetooth_error_timeout">❌ Délai de connexion Bluetooth dépassé.</string>
-    <string name="bluetooth_error_service_not_found">❌ Service Bluetooth introuvable sur le périphérique.</string>
-    <string name="bluetooth_error_characteristic_not_found">❌ Caractéristique Bluetooth introuvable sur le périphérique.</string>
-    <string name="bluetooth_error_generic">❌ Erreur Bluetooth : %1$s</string>
-
-    <string name="bluetooth_pin_dialog_title">PIN Bluetooth</string>
-    <string name="bluetooth_pin_dialog_label">Code PIN</string>
-    <string name="bluetooth_pin_dialog_confirm">Connecter</string>
-    <string name="bluetooth_pin_dialog_cancel">Annuler</string>
-
-    <string name="bluetooth_permission_denied_banner">❌ Permission Bluetooth refusée. Activez BLUETOOTH_SCAN et BLUETOOTH_CONNECT dans les paramètres.</string>
-    <string name="bluetooth_permission_required_title">Permission Bluetooth requise</string>
-    <string name="bluetooth_permission_required_message">L\'application a besoin des permissions BLUETOOTH_SCAN et BLUETOOTH_CONNECT pour piloter les commandes Power.</string>
-    <string name="bluetooth_permission_denied_message">La permission Bluetooth est refusée. Vous pouvez l\'activer depuis les paramètres.</string>
 
     <!-- BLE Connection Status -->
-    <string name="ble_status_idle">Inactif</string>
-    <string name="ble_status_scanning">Recherche...</string>
-    <string name="ble_status_found">Trouvé : %1$s</string>
-    <string name="ble_status_not_found">Non trouvé</string>
-    <string name="ble_status_connecting">Connexion...</string>
-    <string name="ble_status_connected">✅ Connecté</string>
-    <string name="ble_status_invalid_pin">❌ PIN incorrect</string>
-    <string name="ble_status_timeout">❌ Délai de connexion écoulé</string>
-    <string name="ble_status_service_not_found">❌ Service non trouvé</string>
-    <string name="ble_status_characteristic_not_found">❌ Caractéristique non trouvée</string>
-    <string name="ble_status_error">❌ Erreur : %1$s</string>
-    <string name="ble_status_disconnected">❌ Déconnecté</string>
     <string name="relay_command_sent">Commande relais envoyée</string>
     <string name="relay_command_confirmed">✅ Commande relais confirmée</string>
     <string name="relay_command_failed">❌ Échec commande relais</string>
     <string name="wifi_command_sent">Commande Wi-Fi envoyée</string>
     <string name="wifi_command_confirmed">✅ Commande Wi-Fi confirmée</string>
     <string name="wifi_command_failed">❌ Échec commande Wi-Fi</string>
-    <string name="bluetooth_command_sent">Commande Bluetooth envoyée</string>
-    <string name="bluetooth_command_confirmed">✅ Commande Bluetooth confirmée</string>
-    <string name="bluetooth_command_failed">❌ Échec commande Bluetooth</string>
+
+    <!-- Power tab -->
+    <string name="power_config_title">CONFIGURATION</string>
+    <string name="power_url_label">URL</string>
+    <string name="power_url_placeholder">http://POWER_SWITCH.local</string>
+    <string name="power_url_supporting_text">local.properties/api.baseUrl</string>
+    <string name="power_url_resolved_ip">IP: %1$s</string>
+    <string name="power_switch_number_label">N°</string>
+    <string name="power_battery_level_label">NIVEAU</string>
+    <string name="power_battery_min_label">Min</string>
+    <string name="power_battery_max_label">Max</string>
+    <string name="power_token_label">TOKEN</string>
+    <string name="power_token_placeholder">api.bearer</string>
+    <string name="power_endpoints_title">ENDPOINTS</string>
+    <string name="power_endpoint_status_label">STATUS</string>
+    <string name="power_endpoint_power_label">POWER</string>
+    <string name="power_charge_button">CHARGE</string>
+    <string name="power_status_label">ETAT</string>
+    <string name="power_device_battery_label">BATTERIE TEL</string>
+    <string name="power_last_action_label">ACTION</string>
+    <string name="power_reset_discovery_button">DECOUVERTE IP</string>
+
+    <string name="power_charge_enabled_message">✅ Charge activée</string>
+    <string name="power_charge_disabled_message">✅ Charge desactivée</string>
+    <string name="power_charge_error_message">❌ %1$s</string>
+    <string name="power_charge_error_default">Erreur HTTP</string>
 </resources>

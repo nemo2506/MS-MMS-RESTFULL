@@ -13,6 +13,7 @@ class SettingsRepository @Inject constructor(
     suspend fun getSettings(): AppSettingsEntity? = settingsDao.getSettings()
     fun observeSettings(): Flow<AppSettingsEntity?> = settingsDao.observeSettings()
     suspend fun saveSettings(settings: AppSettingsEntity) = settingsDao.saveSettings(settings)
-    suspend fun updateToken(token: String) = settingsDao.updateToken(token)
+    suspend fun updateToken(token: String?) = settingsDao.updateToken(token)
+    suspend fun updatePowerToken(token: String?) = settingsDao.updatePowerToken(token)
     suspend fun updateRestPort(restPort: Int) = settingsDao.updateRestPort(restPort)
 }

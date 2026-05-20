@@ -39,10 +39,10 @@
 flowchart LR
     Activity[MainActivity]
     Screen["MainScreen<br/>Compose"]
-    ViewModel["MainViewModel<br/>+ BLE"]
+    ViewModel["MainViewModel"]
     State["MainUiState<br/>StateFlow"]
     UC1["UseCases<br/>SendRest SendOvh<br/>GetSettings"]
-    Repository["Repositories<br/>Sms Settings Ble"]
+    Repository["Repositories<br/>Sms Settings"]
     Room[("Room Database<br/>Settings + Logs")]
     Crypto["Encrypted<br/>SharedPrefs"]
     Manager["ServiceControl<br/>Manager"]
@@ -50,7 +50,6 @@ flowchart LR
     Server["SmsRestServer<br/>api/send api/logs"]
     SMS["SmsManager"]
     OVH["OVH API"]
-    BLE["ESP32<br/>BLE"]
     
     Activity -->|onCreate| Screen
     Screen -->|user input| ViewModel
@@ -63,7 +62,6 @@ flowchart LR
     Repository -->|secrets| Crypto
     Repository -->|send| SMS
     SMS -->|transport| OVH
-    Repository -->|BLE| BLE
     
     ViewModel -->|start/stop| Manager
     Manager -->|control| FG
@@ -124,16 +122,6 @@ flowchart LR
 - 🌍 **Internationalisation FR/EN** via ressources `values` / `values-fr` / `values-en`
 - 🧪 **Tests unitaires et instrumentés** (service, viewmodel, circuits API/SMS)
 
----
-
-## 📚 Documentation projet
-
-- Manuel achat / integration MOS + ESP32 + flash Arduino IDE : `docs/MANUEL_ACHAT_INTEGRATION_MOS_ESP32.md`
-- Exemple de Client (Python/PHP/Android) pour l'API REST SMS / MMS : `docs/EXEMPLE_DE_CLIENT_API_REST.md`
-- Historique des corrections MVVM : `CHANGELOG_MVVM_FIX.md`
-
----
-
 ## 📁 Structure du projet
 
 ```text
@@ -145,7 +133,6 @@ MS-OVH-SMS/
 │   │   │   ├── java/com/miseservice/msmms/
 │   │   │   │   ├── MsMmsApp.kt                ← Application Android + bootstrap global
 │   │   │   │   ├── data/
-│   │   │   │   │   ├── ble/                   ← Integration Bluetooth / GATT / ESP32
 │   │   │   │   │   ├── datasource/            ← Sources techniques et acces plateforme
 │   │   │   │   │   ├── local/                 ← Room (DB, DAO, Entity)
 │   │   │   │   │   ├── remote/                ← API OVH / appels HTTP / acces distant
@@ -174,8 +161,7 @@ MS-OVH-SMS/
 │   │       └── LocalSmsCircuitTest.kt         ← Tests instrumentes envoi local
 │   └── build.gradle
 ├── docs/
-│   ├── EXEMPLE_DE_CLIENT_API_REST.md
-│   └── MANUEL_ACHAT_INTEGRATION_MOS_ESP32.md
+│   └── EXEMPLE_DE_CLIENT_API_REST.md
 ├── screenShots/                               ← Captures d'ecran utilisees dans le README
 ├── build.gradle
 ├── settings.gradle
@@ -193,45 +179,6 @@ MS-OVH-SMS/
 # Sync Gradle puis Run sur un appareil réel ou un émulateur
 ```
 
-## 🔵 Configuration BLE locale (`local.properties`)
-
-Certaines valeurs BLE utilisees pour la connexion au module ESP32 sont definies localement dans `local.properties`.
-
-> ⚠️ Ne jamais versionner de secrets ou d'identifiants materiels reels dans Git.
-> Le fichier `local.properties` doit rester local a la machine de developpement.
-
-### Exemple documente
-
-```ini
-# BLE local parameters
-ble.deviceName=ESP32_S*****
-ble.serviceUuid=6f1c2a90-****-****-****-********d5b1
-ble.characteristicUuid=a4d91c2e-****-****-****-********9d73
-ble.pin=****
-# BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT = 2
-ble.writeType=2
-```
-
-### Signification des parametres
-
-- `ble.deviceName` : nom Bluetooth annonce par le module ESP32
-- `ble.serviceUuid` : UUID du service GATT expose par le module
-- `ble.characteristicUuid` : UUID de la caracteristique utilisee pour lire / ecrire
-- `ble.pin` : code local de securisation / appairage selon votre implementation
-- `ble.writeType` : type d'ecriture GATT (`2` = `WRITE_TYPE_DEFAULT`)
-
-### Exemple attendu cote developpeur
-
-```ini
-# BLE local parameters
-ble.deviceName=<BLE_DEVICE_NAME>
-ble.serviceUuid=<BLE_SERVICE_UUID>
-ble.characteristicUuid=<BLE_CHARACTERISTIC_UUID>
-ble.pin=<BLE_PIN>
-# BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT = 2
-ble.writeType=2
-```
-
 ---
 
 ## 📸 Aperçu de l'interface
@@ -241,15 +188,10 @@ ble.writeType=2
 | ![VUE SMS](screenShots/1.%20VUE%20SMS_1.png "Envoi SMS local") | ![VUE OVH](screenShots/2.%20VUE%20OVH_1.png "Configuration OVH") |
 | Envoyez des SMS ou MMS directement depuis l'appareil via SmsManager. | Configurez vos identifiants OVH (appKey, secret, consumerKey) et envoyez des SMS via l'API OVH. |
 
-| Onglet API REST — Haut | Onglet Power — Pilotage Bluetooth ESP32 |
+| Onglet API REST — Haut | Onglet Power — Seuils de batterie |
 |---|---|
-| ![VUE API HAUT](screenShots/3.%20VUE%20API%20HAUT_1.png "API REST - Configuration") | ![VUE POWER](screenShots/5.%20VUE%20POWER_1.png "Pilotage Bluetooth Power") |
-| Configuration du port, affichage de l'IP locale et des endpoints disponibles. | Contrôlez le module MOS/relais via Bluetooth, gérez les seuils batterie Min/Max, et les commandes relais/WiFi. |
-
-| Configuration Arduino IDE |
-|---|
-| ![ARDUINO IDE](screenShots/6.%20ARDUINO%20IDE_1.png "Configuration et flash ESP32") |
-| Interface de flashage pour le firmware ESP32 (gestion BLE/Relais). |
+| ![VUE API HAUT](screenShots/3.%20VUE%20API%20HAUT_1.png "API REST - Configuration") | ![VUE POWER](screenShots/5.%20VUE%20POWER_1.png "Pilotage Batterie") |
+| Configuration du port, affichage de l'IP locale et des endpoints disponibles. | Gestion des seuils batterie Min/Max pour l'optimisation de la charge. |
 
 
 
@@ -376,7 +318,6 @@ Pour toute question ou contribution, ouvrez une issue ou une pull request.
 
 | Document | Emplacement | Rôle |
 |---|---|---|
-| Manuel MOS + ESP32 | [`docs/MANUEL_ACHAT_INTEGRATION_MOS_ESP32.md`](docs/MANUEL_ACHAT_INTEGRATION_MOS_ESP32.md) | Achat, cablage, flash Arduino IDE, BLE, relais et integration ESP32 |
 | Exemple de Client | [`docs/EXEMPLE_DE_CLIENT_API_REST.md`](docs/EXEMPLE_DE_CLIENT_API_REST.md) | Exemples clients Python, PHP et Android pour consommer l'API REST SMS / MMS |
 
 ---

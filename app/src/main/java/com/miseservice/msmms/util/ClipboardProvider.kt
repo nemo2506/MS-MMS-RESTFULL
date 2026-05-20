@@ -39,13 +39,11 @@ class ClipboardProvider @Inject constructor(
                 "network" -> R.string.network_copied
                 else -> R.string.endpoint_copied
             }
-            val statusPrefix = "✅ "
             Toast.makeText(
                 context,
-                statusPrefix + context.getString(messageRes),
+                context.getString(messageRes),
                 Toast.LENGTH_SHORT
             ).show()
         }
     }
 }
-

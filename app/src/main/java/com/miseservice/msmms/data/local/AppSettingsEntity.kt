@@ -1,26 +1,29 @@
 package com.miseservice.msmms.data.local
 
+import com.miseservice.msmms.BuildConfig
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
 @Entity(tableName = "app_settings")
 data class AppSettingsEntity(
     @PrimaryKey val id: Int = 1,
-    val senderId: String?,
-    val recipient: String?,
-    val message: String?,
+    val senderId: String? = null,
+    val recipient: String? = null,
+    val message: String? = null,
     val ovhAppKey: String? = null,
     val ovhAppSecret: String? = null,
     val ovhConsumerKey: String? = null,
     val ovhServiceName: String? = null,
-    val ovhEndpoint: String? = null,
-    val ovhCountryPrefix: String? = null,
-    val serviceActive: Boolean,
-    val hostIp: String?,
+    val ovhEndpoint: String? = "ovh-eu",
+    val ovhCountryPrefix: String? = "+33",
+    val serviceActive: Boolean = false,
+    val hostIp: String? = null,
     val restPort: Int = 8080,
     val token: String? = null,
-    val blePin: String? = null,
-    val bleConnectionActive: Boolean = false,
-    val bleMinBattery: Int = 20,
-    val bleMaxBattery: Int = 80
+    val powerToken: String? = null,
+    val powerBaseUrl: String = BuildConfig.API_BASE_URL,
+    val powerSwitchNumber: String = BuildConfig.API_CHARGE_PIN,
+    val powerBatteryMin: Int = 20,
+    val powerBatteryMax: Int = 80,
+    val powerResolvedIp: String? = null
 )
