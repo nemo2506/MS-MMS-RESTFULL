@@ -187,7 +187,7 @@
     <string name="power_config_title">CONFIGURATION</string>
     <string name="power_url_label">URL</string>
     <string name="power_url_placeholder">http://POWER_SWITCH.local</string>
-    <string name="power_url_supporting_text">local.properties/api.baseUrl</string>
+    <string name="power_url_supporting_text">URL base du gestionnaire de charge (ex: http://POWER_SWITCH.local ou 192.168.1.100)</string>
     <string name="power_url_resolved_ip">IP: %1$s</string>
     <string name="power_switch_number_label">N°</string>
     <string name="power_battery_level_label">NIVEAU</string>

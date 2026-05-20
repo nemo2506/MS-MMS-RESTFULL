@@ -18,8 +18,18 @@ object BatteryOptimizationHelper {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return null
         if (isIgnoringBatteryOptimizations(context)) return null
 
-        return Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-            data = Uri.parse("package:${context.packageName}")
+        val candidates = listOf(
+            Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                data = Uri.parse("package:${context.packageName}")
+            },
+            Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS),
+            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = Uri.parse("package:${context.packageName}")
+            }
+        )
+
+        return candidates.firstOrNull { intent ->
+            intent.resolveActivity(context.packageManager) != null
         }
     }
 }

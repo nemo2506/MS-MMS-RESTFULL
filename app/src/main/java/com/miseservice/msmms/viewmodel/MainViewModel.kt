@@ -8,11 +8,8 @@ import androidx.lifecycle.viewModelScope
 import com.miseservice.msmms.R
 import com.miseservice.msmms.data.repository.NetworkRepository
 import com.miseservice.msmms.data.repository.SettingsRepository
-import com.miseservice.msmms.domain.usecase.GetSettingsUseCase
-import com.miseservice.msmms.domain.usecase.SendOvhSmsUseCase
 import com.miseservice.msmms.domain.usecase.SendSmsUseCase
 import com.miseservice.msmms.domain.usecase.UpdateRestPortUseCase
-import com.miseservice.msmms.model.OvhSmsRequest
 import com.miseservice.msmms.model.SendResult
 import com.miseservice.msmms.model.SmsMessage
 import com.miseservice.msmms.power.PowerRepository
@@ -22,7 +19,6 @@ import com.miseservice.msmms.util.BatteryLevelProvider
 import com.miseservice.msmms.util.BatteryOptimizationHelper
 import com.miseservice.msmms.util.ClipboardProvider
 import com.miseservice.msmms.util.LocationDataProvider
-import com.miseservice.msmms.util.PhoneNumberValidator
 import com.miseservice.msmms.util.RestServerEventManager
 import com.miseservice.msmms.util.RestServerEventType
 import com.miseservice.msmms.util.SimNetworkStatusProvider
@@ -40,18 +36,16 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.sync.Mutex
 import java.net.InetAddress
 import java.net.URI
 import javax.inject.Inject
 import javax.jmdns.JmDNS
-import javax.jmdns.ServiceInfo
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val sendSmsUseCase: SendSmsUseCase,
-    private val sendOvhSmsUseCase: SendOvhSmsUseCase,
-    private val getSettingsUseCase: GetSettingsUseCase,
     private val updateRestPortUseCase: UpdateRestPortUseCase,
     private val settingsRepository: SettingsRepository,
     private val restServerEventManager: RestServerEventManager,
@@ -74,6 +68,7 @@ class MainViewModel @Inject constructor(
     private var powerIpDiscoveryJob: Job? = null
     private var lastDiscoveryUrl: String? = null
     private var lastAppliedServiceActive: Boolean? = null
+    private val powerCycleMutex = Mutex()
 
     @Volatile
     private var isRestPortEditing: Boolean = false
@@ -116,6 +111,9 @@ class MainViewModel @Inject constructor(
         val host = currentSettings.hostIp ?: _uiState.value.hostIp
         val restPort = currentSettings.restPort.takeIf { ValidationHelper.isPortValid(it) }
             ?: ValidationHelper.DEFAULT_REST_PORT
+
+        Log.d("PowerDiscovery", "🔄 applyObservedSettings() - powerResolvedIp from DB: '${currentSettings.powerResolvedIp}'")
+
         runCatching {
             applyServiceActiveState(currentSettings.serviceActive)
         }.onFailure { error ->
@@ -162,9 +160,21 @@ class MainViewModel @Inject constructor(
             )
         }
 
-        // Lance une résolution persistante si l'URL n'est pas déjà une IPv4 et qu'on n'a pas d'IP résolue valide.
-        if (_uiState.value.powerResolvedIp.isNullOrBlank() && shouldDiscoverPowerIp(_uiState.value.powerBaseUrl)) {
-            schedulePowerIpDiscovery()
+        Log.d("PowerDiscovery", "✅ applyObservedSettings() - uiState.powerResolvedIp now: '${_uiState.value.powerResolvedIp}'")
+
+        // Au redémarrage de l'app, si le service est déjà ON en base,
+        // on doit relancer automatiquement discovery/status sans bouton manuel.
+        if (currentSettings.serviceActive) {
+            if (powerAutomationJob?.isActive != true) {
+                Log.d("PowerDiscovery", "🚀 bootstrap runtime Power (service ON depuis DB)")
+                startPowerAutomation()
+                if (_uiState.value.powerResolvedIp.isNullOrBlank() && shouldDiscoverPowerIp(_uiState.value.powerBaseUrl)) {
+                    schedulePowerIpDiscovery()
+                }
+                viewModelScope.launch { runPowerAutomationCycle() }
+            }
+        } else {
+            stopPowerAutomation()
         }
     }
 
@@ -172,6 +182,8 @@ class MainViewModel @Inject constructor(
     private fun persistCurrentSettingsNow() {
         val state = _uiState.value
         val currentToken = _token.value
+        Log.d("PowerDiscovery", "💾 persistCurrentSettingsNow() - saving powerResolvedIp: '${state.powerResolvedIp}'")
+
         viewModelScope.launch {
             val normalizedPowerUrl = normalizePowerUrl(state.powerBaseUrl).ifBlank { defaultPowerUrl() }
             val entity = com.miseservice.msmms.data.local.AppSettingsEntity(
@@ -196,6 +208,7 @@ class MainViewModel @Inject constructor(
                 powerResolvedIp = state.powerResolvedIp
             )
             settingsRepository.saveSettings(entity)
+            Log.d("PowerDiscovery", "✅ persistCurrentSettingsNow() - saved to DB: powerResolvedIp='${entity.powerResolvedIp}'")
         }
     }
 
@@ -225,9 +238,11 @@ class MainViewModel @Inject constructor(
 
     private fun schedulePowerIpDiscovery() {
         val currentUrl = normalizePowerUrl(_uiState.value.powerBaseUrl).ifBlank { defaultPowerUrl() }
-        
+        Log.d("PowerDiscovery", "schedulePowerIpDiscovery() appelée pour URL: $currentUrl")
+
         // Si une découverte est déjà en cours pour la MÊME URL, on ne fait rien.
         if (powerIpDiscoveryJob?.isActive == true && lastDiscoveryUrl == currentUrl) {
+            Log.d("PowerDiscovery", "Discovery déjà en cours pour cette URL, abandon")
             return
         }
 
@@ -235,24 +250,33 @@ class MainViewModel @Inject constructor(
         lastDiscoveryUrl = currentUrl
 
         if (!shouldDiscoverPowerIp(currentUrl)) {
+            Log.d("PowerDiscovery", "L'URL ne nécessite pas de découverte (c'est peut-être IPv4): $currentUrl")
             _uiState.value = _uiState.value.copy(isPowerIpDiscoveryLoading = false)
             return
         }
 
         // Si l'URL est déjà persistée en IPv4, on évite toute redécouverte DNS.
         if (!extractIpv4Host(currentUrl).isNullOrBlank()) {
+            Log.d("PowerDiscovery", "URL contient déjà une IPv4, pas besoin de redécouvrir")
             _uiState.value = _uiState.value.copy(
                 powerResolvedIp = extractIpv4Host(currentUrl),
                 isPowerIpDiscoveryLoading = false
             )
+            if (_uiState.value.serviceActive) {
+                viewModelScope.launch { runPowerAutomationCycle() }
+            }
             return
         }
 
+        Log.d("PowerDiscovery", "Lancement de la découverte DNS/mDNS pour: $currentUrl")
         powerIpDiscoveryJob = viewModelScope.launch {
             val networkSnapshot = withContext(Dispatchers.IO) {
                 networkRepository.detect(_uiState.value.restPort)
             }
+            Log.d("PowerDiscovery", "WiFi connecté: ${networkSnapshot.isWifiConnected}")
+
             if (!networkSnapshot.isWifiConnected) {
+                Log.w("PowerDiscovery", "WiFi non connecté, abandon discovery")
                 _uiState.value = _uiState.value.copy(isPowerIpDiscoveryLoading = false)
                 return@launch
             }
@@ -270,16 +294,22 @@ class MainViewModel @Inject constructor(
             while (currentCoroutineContext().isActive) {
                 val currentUrl = normalizePowerUrl(_uiState.value.powerBaseUrl).ifBlank { defaultPowerUrl() }
                 val host = extractHost(currentUrl)
+                Log.d("PowerDiscovery", "Tentative $attempt: currentUrl=$currentUrl, host=$host")
+
                 if (host.isNullOrBlank()) {
                     Log.w("PowerDiscovery", "Discovery aborted: host is null or blank")
                     return
                 }
 
                 if (isIpv4Host(host)) {
+                    Log.i("PowerDiscovery", "Host est déjà IPv4: $host")
                     _uiState.value = _uiState.value.copy(
                         powerResolvedIp = host,
                         powerManagerConnected = true
                     )
+                    if (_uiState.value.serviceActive) {
+                        runPowerAutomationCycle()
+                    }
                     return
                 }
 
@@ -291,13 +321,19 @@ class MainViewModel @Inject constructor(
                 }
 
                 val resolvedIp = extractIpv4Host(resolvedUrl)
+                Log.d("PowerDiscovery", "Tentative $attempt: resolvedUrl=$resolvedUrl, resolvedIp=$resolvedIp")
+
                 if (!resolvedIp.isNullOrBlank()) {
+                    Log.i("PowerDiscovery", "✓ IP résolue avec succès: $resolvedIp (après $attempt tentatives)")
                     _uiState.value = _uiState.value.copy(
                         powerResolvedIp = resolvedIp,
                         powerManagerConnected = true
                     )
                     // On persiste immédiatement l'IP trouvée
                     persistCurrentSettingsNow()
+                    if (_uiState.value.serviceActive) {
+                        runPowerAutomationCycle()
+                    }
                     return
                 }
 
@@ -306,10 +342,12 @@ class MainViewModel @Inject constructor(
                     POWER_IP_DISCOVERY_MAX_RETRY_MS,
                     POWER_IP_DISCOVERY_BASE_RETRY_MS * multiplier
                 )
+                Log.d("PowerDiscovery", "Échec tentative $attempt, nouvelle tentative dans ${retryDelayMs}ms")
                 delay(retryDelayMs)
                 attempt++
             }
         } finally {
+            Log.d("PowerDiscovery", "Discovery terminée. Final state: powerResolvedIp=${_uiState.value.powerResolvedIp}, isPowerIpDiscoveryLoading=false")
             _uiState.value = _uiState.value.copy(isPowerIpDiscoveryLoading = false)
         }
     }
@@ -473,8 +511,7 @@ class MainViewModel @Inject constructor(
         startSimNetworkMonitoring()
         startNetworkMonitoring()
         refreshBatteryOptimizationState()
-        startPowerAutomation()
-        // schedulePowerIpDiscovery() est déjà déclenché par l'observation des settings
+        // L'automation Power et la découverte IP démarrent uniquement via setServiceActive(active = true).
     }
 
     fun refreshNetworkInfo() {
@@ -502,21 +539,6 @@ class MainViewModel @Inject constructor(
                 isIpValid = ValidationHelper.isHostIpUsable(snapshot.localIpAddress ?: ""),
                 isNetworkLoading = false
             )
-
-            // Relance la découverte UNIQUEMENT si :
-            // 1. Wi-Fi est disponible
-            // 2. L'URL n'est pas déjà une IPv4
-            // 3. L'IP n'est PAS déjà résolue et en cache (optimisation batterie en veille)
-            // 4. Aucun job de découverte n'est en cours
-            val currentPowerUrl = normalizePowerUrl(_uiState.value.powerBaseUrl).ifBlank { defaultPowerUrl() }
-            if (
-                snapshot.isWifiConnected &&
-                shouldDiscoverPowerIp(currentPowerUrl) &&
-                _uiState.value.powerResolvedIp.isNullOrBlank() &&  // ← NE redécouvrir que si pas en cache
-                powerIpDiscoveryJob?.isActive != true
-            ) {
-                schedulePowerIpDiscovery()
-            }
 
             // Refresh location if permission is already granted during network refresh
             if (_uiState.value.locationPermissionGranted) {
@@ -546,7 +568,8 @@ class MainViewModel @Inject constructor(
     }
 
     fun showBatteryOptimizationDialog() {
-        if (_uiState.value.batteryOptimizationEnabled) {
+        val canRequest = BatteryOptimizationHelper.buildIgnoreBatteryOptimizationIntent(context) != null
+        if (_uiState.value.batteryOptimizationEnabled && canRequest) {
             _uiState.value = _uiState.value.copy(batteryOptimizationDialogVisible = true)
         }
     }
@@ -556,7 +579,8 @@ class MainViewModel @Inject constructor(
     }
 
     fun refreshBatteryOptimizationState() {
-        val enabled = !BatteryOptimizationHelper.isIgnoringBatteryOptimizations(context)
+        // `enabled` signifie ici: action utile ET réellement disponible sur ce device/version.
+        val enabled = BatteryOptimizationHelper.buildIgnoreBatteryOptimizationIntent(context) != null
         _uiState.value = _uiState.value.copy(
             batteryOptimizationEnabled = enabled,
             batteryOptimizationDialogVisible = _uiState.value.batteryOptimizationDialogVisible && enabled
@@ -665,6 +689,8 @@ class MainViewModel @Inject constructor(
 
     fun setServiceActive(active: Boolean) {
         val currentHostIp = _uiState.value.hostIp
+        Log.i("PowerDiscovery", "🔵 setServiceActive($active) - current powerResolvedIp: '${_uiState.value.powerResolvedIp}'")
+
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(
                 isLoading = true,
@@ -687,6 +713,35 @@ class MainViewModel @Inject constructor(
                     isLoading = false,
                     serviceToggleTargetActive = null
                 )
+                // Quand le service passe à ON, on lance découverte IP ET automation en parallèle
+                // (pas de blocage UI, la découverte se fait de façon async)
+                if (active) {
+                    Log.d("PowerDiscovery", "🟢 Service ON - powerResolvedIp: '${_uiState.value.powerResolvedIp}'")
+                    // Démarrer l'automation immédiatement (elle attendra IP si nécessaire)
+                    startPowerAutomation()
+
+                    // Lancer la découverte IP en parallèle si elle manque
+                    if (_uiState.value.powerResolvedIp.isNullOrBlank() && shouldDiscoverPowerIp(_uiState.value.powerBaseUrl)) {
+                        Log.d("PowerDiscovery", "🔎 IP manquante, lancement discovery async")
+                        schedulePowerIpDiscovery()
+                    } else {
+                        Log.d("PowerDiscovery", "✅ IP déjà persistée ou URL est IPv4: '${_uiState.value.powerResolvedIp}'")
+                    }
+
+                    // Exécuter le premier cycle immédiatement (avec l'IP actuelle ou en attente)
+                    Log.d("PowerDiscovery", "▶️ Execution premier cycle Power")
+                    runPowerAutomationCycle()
+                } else {
+                    Log.d("PowerDiscovery", "🔴 Service OFF")
+                    stopPowerAutomation()
+                    // Au passage OFF, on remet l'état Power UI à neutre depuis setServiceActive.
+                    _uiState.value = _uiState.value.copy(
+                        powerStatusState = null,
+                        powerStatusValue = null,
+                        powerLastAction = null,
+                        powerManagerConnected = false
+                    )
+                }
             }.onSuccess {
                 schedulePersistCurrentSettings()
                 delay(3000)
@@ -706,11 +761,13 @@ class MainViewModel @Inject constructor(
     }
 
     fun refreshHostIp(hostIp: String) {
-        _uiState.value = _uiState.value.copy(
+        val current = _uiState.value
+        if (current.hostIp == hostIp) return
+
+        _uiState.value = current.copy(
             hostIp = hostIp,
             isIpValid = ValidationHelper.isHostIpUsable(hostIp)
         )
-        schedulePersistCurrentSettings()
     }
 
     fun setLocationPermissionGranted(granted: Boolean) {
@@ -757,61 +814,6 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun sendOvhSms() {
-        val state = _uiState.value
-        val defaultCountryCode = state.ovhCountryPrefix.removePrefix("+").ifBlank { "33" }
-        val normalizedRecipient =
-            PhoneNumberValidator.normalize(state.recipient, defaultCountryCode)
-        if (normalizedRecipient == null) {
-            _uiState.value = _uiState.value.copy(
-                feedbackMessage = context.getString(
-                    R.string.feedback_error_with_message,
-                    context.getString(R.string.ovh_invalid_recipient)
-                ),
-                feedbackType = FeedbackType.ERROR
-            )
-            return
-        }
-
-        val request = OvhSmsRequest(
-            senderId = state.senderId.takeIf { it.isNotBlank() },
-            appKey = state.ovhAppKey,
-            appSecret = state.ovhAppSecret,
-            consumerKey = state.ovhConsumerKey,
-            serviceName = state.ovhServiceName,
-            endpoint = state.ovhEndpoint,
-            countryPrefix = state.ovhCountryPrefix,
-            recipient = normalizedRecipient,
-            message = state.message
-        )
-
-        viewModelScope.launch {
-            when (val result = sendOvhSmsUseCase(request)) {
-                is SendResult.Success -> {
-                    _uiState.value = _uiState.value.copy(
-                        message = "",
-                        feedbackMessage = context.getString(R.string.ovh_sms_sent_success),
-                        feedbackType = FeedbackType.SUCCESS
-                    )
-                    delay(4000)
-                    clearFeedback()
-                }
-
-                is SendResult.Error -> {
-                    _uiState.value = _uiState.value.copy(
-                        feedbackMessage = context.getString(
-                            R.string.feedback_error_with_message,
-                            result.message
-                        ),
-                        feedbackType = FeedbackType.ERROR
-                    )
-                    delay(5000)
-                    clearFeedback()
-                }
-            }
-        }
-    }
-
     fun clearFeedback() {
         _uiState.value = _uiState.value.copy(
             feedbackMessage = null,
@@ -829,10 +831,6 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    private fun stopSimNetworkMonitoring() {
-        simNetworkMonitorJob?.cancel()
-        simNetworkMonitorJob = null
-    }
 
     private fun startNetworkMonitoring() {
         if (networkMonitorJob?.isActive == true) return
@@ -881,18 +879,21 @@ class MainViewModel @Inject constructor(
     }
 
     fun resetPowerIpDiscovery() {
+        Log.i("PowerDiscovery", "resetPowerIpDiscovery() appelée")
         powerIpDiscoveryJob?.cancel()
         _uiState.value = _uiState.value.copy(
             powerResolvedIp = null,
             isPowerIpDiscoveryLoading = true
         )
-        // On force la persistence de powerResolvedIp à null pour vider le cache DB
+        // On force la persistence de powerResolvedIp à null pour vider le cache DB.
         schedulePersistCurrentSettings()
-        
-        powerIpDiscoveryJob = viewModelScope.launch {
-            // Un petit délai pour laisser l'UI réagir et éviter des conflits de job
-            delay(100)
-            runPersistentPowerIpDiscovery()
+
+        // On relance immédiatement la découverte si le service est actif
+        if (_uiState.value.serviceActive) {
+            Log.d("PowerDiscovery", "Service actif, relance la découverte")
+            schedulePowerIpDiscovery()
+        } else {
+            Log.d("PowerDiscovery", "Service inactif, pas de relance de découverte")
         }
     }
 
@@ -903,9 +904,7 @@ class MainViewModel @Inject constructor(
             powerResolvedIp = ipv4
         )
         schedulePersistCurrentSettings()
-        if (ipv4 == null && shouldDiscoverPowerIp(value)) {
-            schedulePowerIpDiscovery()
-        } else if (ipv4 != null) {
+        if (ipv4 != null) {
             powerIpDiscoveryJob?.cancel()
             powerIpDiscoveryJob = null
         }
@@ -971,14 +970,30 @@ class MainViewModel @Inject constructor(
         if (powerAutomationJob?.isActive == true) return
         powerAutomationJob = viewModelScope.launch {
             while (true) {
-                runPowerAutomationCycle()
                 delay(AUTO_RELAY_CHECK_INTERVAL_MS)
+                runPowerAutomationCycle()
             }
         }
     }
 
+    private fun stopPowerAutomation() {
+        powerAutomationJob?.cancel()
+        powerAutomationJob = null
+    }
+
     private suspend fun runPowerAutomationCycle() {
+        if (!powerCycleMutex.tryLock()) {
+            Log.d("PowerDiscovery", "⏭️ runPowerAutomationCycle skipped (already running)")
+            return
+        }
+        try {
         val snapshot = _uiState.value
+
+        // Le suivi/automation Power est actif uniquement si le service principal est actif.
+        if (!snapshot.serviceActive) return
+
+        Log.d("PowerDiscovery", "⚙️ runPowerAutomationCycle() - powerResolvedIp: '${snapshot.powerResolvedIp}'")
+
         val batteryLevel = batteryLevelProvider.getBatteryLevelPercent()
         if (batteryLevel != null) {
             _uiState.value = _uiState.value.copy(deviceBatteryLevel = batteryLevel)
@@ -995,12 +1010,34 @@ class MainViewModel @Inject constructor(
             if (port > 0) "$scheme://$ip:$port" else "$scheme://$ip"
         } ?: snapshot.powerBaseUrl
 
+        // Vérification que l'URL est valide avant l'appel API
+        if (effectiveBaseUrl.isBlank()) {
+            Log.w("PowerDiscovery", "⚠️ effectiveBaseUrl est vide, impossible de requêter le statut Power")
+            _uiState.value = _uiState.value.copy(powerManagerConnected = false)
+            return
+        }
+
+        val fetchStartMs = System.currentTimeMillis()
+        Log.d(
+            "PowerDiscovery",
+            "🌐 fetchStatus start | baseUrl='$effectiveBaseUrl' | pin='${snapshot.powerSwitchNumber.trim()}' | resolvedIp='${snapshot.powerResolvedIp}'"
+        )
         val status = powerRepository.fetchStatus(effectiveBaseUrl, snapshot.powerSwitchNumber)
-            .getOrElse {
+            .getOrElse { error ->
+                val elapsedMs = System.currentTimeMillis() - fetchStartMs
+                Log.w(
+                    "PowerDiscovery",
+                    "❌ fetchStatus failed | elapsed=${elapsedMs}ms | baseUrl='$effectiveBaseUrl' | pin='${snapshot.powerSwitchNumber.trim()}' | error='${error.message}'"
+                )
                 _uiState.value = _uiState.value.copy(powerManagerConnected = false)
                 return
             }
 
+        val elapsedMs = System.currentTimeMillis() - fetchStartMs
+        Log.d(
+            "PowerDiscovery",
+            "✅ fetchStatus ok | elapsed=${elapsedMs}ms | state='${status.state}' | value='${status.value}' | pin='${status.pin}'"
+        )
         val expectedPin = snapshot.powerSwitchNumber.trim().toIntOrNull()
         val connected = expectedPin != null && expectedPin == status.pin
 
@@ -1019,6 +1056,7 @@ class MainViewModel @Inject constructor(
 
         if (!shouldActivatePower && !shouldDeactivatePower) return
 
+        Log.d("PowerDiscovery", "⚡ Toggle Power: activate=$shouldActivatePower, deactivate=$shouldDeactivatePower")
         val toggled = powerRepository.togglePower(effectiveBaseUrl, snapshot.powerSwitchNumber)
             .getOrElse {
                 return
@@ -1030,6 +1068,9 @@ class MainViewModel @Inject constructor(
             powerManagerConnected = expectedPin != null && expectedPin == toggled.pin,
             powerLastAction = toggled.action
         )
+        } finally {
+            powerCycleMutex.unlock()
+        }
     }
 
     override fun onCleared() {
