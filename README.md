@@ -172,12 +172,12 @@ MS-OVH-SMS/
 
 | Onglet SMS — Envoi SMS local | Onglet OVH — Configuration API OVH |
 |---|---|
-| ![VUE SMS](screenShots/1.%20VUE%20SMS.png "Envoi SMS local") | ![VUE OVH](screenShots/2.%20VUE%20OVH.png "Configuration OVH") |
+| ![VUE SMS](screenShots/1.%20VUE%20SMS.jpeg "Envoi SMS local") | ![VUE OVH](screenShots/2.%20VUE%20OVH.jpeg "Configuration OVH") |
 | Envoyez des SMS ou MMS directement depuis l'appareil via SmsManager. | Configurez vos identifiants OVH (appKey, secret, consumerKey) et envoyez des SMS via l'API OVH. |
 
 | Onglet API REST — Haut | Onglet Power — Seuils de batterie |
 |---|---|
-| ![VUE API HAUT](screenShots/3.%20VUE%20API%20HAUT.png "API REST - Configuration") | ![VUE POWER](screenShots/5.%20VUE%20POWER.png "Pilotage Batterie") |
+| ![VUE API HAUT](screenShots/3.%20VUE%20API.jpeg "API REST - Configuration") | ![VUE POWER](screenShots/4.%20VUE%20POWER%20MANAGEMENT.jpeg "Pilotage Batterie") |
 | Configuration du port, affichage de l'IP locale et des endpoints disponibles. | Gestion des seuils batterie Min/Max pour l'optimisation de la charge. |
 
 ---
