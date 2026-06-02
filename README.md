@@ -177,7 +177,7 @@ MS-OVH-SMS/
 
 | Onglet API REST — Haut | Onglet Power — Seuils de batterie |
 |---|---|
-| ![VUE API HAUT](screenShots/3.%20VUE%20API.jpeg "API REST - Configuration") | ![VUE POWER](screenShots/5.%20VUE%20POWER%20MANAGEMENT.jpeg "Pilotage Batterie") |
+| ![VUE API HAUT](screenShots/3.%20VUE%20API.jpeg "API REST - Configuration") | ![VUE POWER](screenShots/4.%20VUE%20POWER%20MANAGEMENT.jpeg "Pilotage Batterie") |
 | Configuration du port, affichage de l'IP locale et des endpoints disponibles. | Gestion des seuils batterie Min/Max pour l'optimisation de la charge. |
 
 ---
