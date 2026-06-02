@@ -36,14 +36,14 @@ Ce document decrit l'integration entre :
 
 ```mermaid
 flowchart TD
-    A["🔌 ÉTAPE 1 : DÉMARRER MOS ESP32<br/>Brancher USB ou alimentation 5V"] --> B["📡 ÉTAPE 2 : LANCER WPS SUR MODEM<br/>Appuyer 3-5 sec sur bouton WPS<br/>(faire vite, WPS démarre automatiquement)"]
-    B --> C["⏳ ÉTAPE 3 : Attendre Connexion WiFi<br/>~5-10 secondes pour l'association"]
-    C --> D["✅ ÉTAPE 4 : Vérifier Connexion WiFi<br/>IP addressée • mDNS enregistré"]
+    A["🔌 ÉTAPE 1 : DÉMARRER MOS ESP32<br/>Brancher USB ou alimentation 5V"] --> B["📡 ÉTAPE 2 : CONFIGURER WIFI (AP MODE)<br/>Se connecter au réseau 'ESP32-CONFIG'<br/>Navigateur -> 192.168.4.1"]
+    B --> C["⏳ ÉTAPE 3 : Saisir Identifiants WiFi<br/>L'ESP32 redémarre et se connecte"]
+    C --> D["✅ ÉTAPE 4 : Vérifier Connexion WiFi<br/>LED GPIO23 Fixe • IP locale OK"]
     D --> E{ÉTAPE 5 : Monitoring<br/>avant lancement app ?}
-    E -->|OUI| F["🖥️ OPTIONNEL : MONITORER avec IDE ARDUINO<br/>Ctrl+Maj+M • 115200 baud<br/>Vérifier logs WPS • IP • mDNS"]
+    E -->|OUI| F["🖥️ OPTIONNEL : MONITORER avec IDE ARDUINO<br/>Ctrl+Maj+M • 115200 baud<br/>Vérifier logs AP/STA • IP • mDNS"]
     E -->|NON| G["📱 ÉTAPE 6 : LANCER APPLICATION Android<br/>MS-OVH-SMS • Onglet Power"]
     F --> G
-    G --> H["⚙️ ÉTAPE 7 : Configurer Paramètres<br/>URL : http://POWER_SWITCH.local<br/>Port • PIN • Token • Min/Max"]
+    G --> H["⚙️ ÉTAPE 7 : Configurer Paramètres<br/>URL : http://POWER_SWITCH<br/>Port • PIN • Token • Min/Max"]
     H --> I["🧪 ÉTAPE 8 : Tester Connexion API<br/>Cliquer STATUS • puis POWER<br/>Vérifier réponses JSON"]
     I --> J["▶️ ÉTAPE 9 : Lancer l'AUTOMATION<br/>Cycle 60 secondes démarré<br/>Logs sur console USB-TTL"]
     J --> K["🔋 SUCCÈS ✨<br/>Charge/Décharge gérée automatiquement<br/>Batterie en santé optimale"]
@@ -79,12 +79,12 @@ Cette integration s'appuie sur deux appareils physiques :
 **Role principal**
 
 - Programmer l'ESP32 depuis l'IDE Arduino.
-- Lire les logs serie (`115200`) pendant le demarrage WPS et les appels API.
+- Lire les logs serie (`115200`) pendant le demarrage WiFi et les appels API.
 
 **Usage dans ce projet**
 
 - Chargement du firmware REST (`/api/power/[PIN]`, `/api/status/[PIN]`).
-- Diagnostic rapide en cas d'echec WPS, mDNS ou token Bearer invalide.
+- Diagnostic rapide en cas d'echec de connexion, mDNS ou token Bearer invalide.
 
 **Schéma de branchement**
 
@@ -143,7 +143,7 @@ graph LR
 
 - `POST /api/status/[PIN]` : lecture et supervision de l'etat de sortie.
 - `POST /api/power/[PIN]` : bascule (toggle) de l'etat pour la charge.
-- Integration mDNS : acces via `http://POWER_SWITCH.local`.
+- Integration mDNS : acces via `http://POWER_SWITCH`.
 
 **Recommandations de cablage (principe)**
 
@@ -154,35 +154,41 @@ graph LR
 ### Sequence de mise en service (materiel)
 
 1. Connecter le **USB-TTL** et flasher le firmware ESP32.
-2. Ouvrir le moniteur serie et verifier IP + mDNS (`POWER_SWITCH.local`).
+2. Ouvrir le moniteur serie et verifier IP + mDNS (`POWER_SWITCH`).
 3. Brancher le **MOS-ESP32-UART** sur la ligne de commande du gestionnaire de charge.
 4. Configurer l'app Android (`URL`, `PIN`, `token`, seuils `MIN/MAX`).
 5. Verifier les reponses API `STATUS` puis `POWER`.
 
 ## USAGE:
 
-1. **Demarrer MOS ESP32**
-    - Brancher l'ESP32 sur une source d'alimentation USB (adaptateur USB-TTL ou direct USB-C selon
-      le modele).
-    - Le module va demarrer le protocole WPS (attendre ~5-10 secondes).
+1. **Démarrer MOS ESP32**
+    - Brancher l'ESP32 sur une source d'alimentation.
+    - Si aucune configuration n'est enregistrée, la LED (GPIO 23) clignote lentement.
+    - Le module crée un point d'accès nommé **ESP32-CONFIG**.
 
-2. **Lancer WPS sur MODEM**
-    - Appuyer sur le bouton WPS du routeur/MODEM (gardez-le enfonce pendant 3-5 secondes).
-    - L'ESP32 va se connecter automatiquement au reseau Wi-Fi.
-    - Verifier la connexion dans le moniteur serie (IP affichee).
+2. **Configurer le WiFi (Portail Captif)**
+    - Connectez votre smartphone au réseau WiFi **ESP32-CONFIG**.
+    - Une notification de connexion devrait apparaître. Sinon, ouvrez votre navigateur sur `http://192.168.4.1`.
+    - Saisissez le SSID et le mot de passe de votre réseau local.
+    - L'ESP32 enregistre les infos en mémoire (NVS) et redémarre.
+    - Une fois connecté, la LED (GPIO 23) devient fixe.
 
-3. **(OPTION) MONITORER avec IDE ( ARDUINO )**
+3. **Réinitialisation (Reset WiFi)**
+    - Pour effacer la configuration WiFi : maintenez le bouton **BOOT** (GPIO 0) enfoncé pendant **3 secondes** au démarrage.
+    - La LED clignotera rapidement pour confirmer le reset, puis l'ESP32 repassera en mode Portail Captif.
+
+4. **(OPTION) MONITORER avec IDE ( ARDUINO )**
     - Ouvrir Arduino IDE et selectionner la connexion serie de l'USB-TTL.
     - Aller dans **Outils → Moniteur serie** (ou `Ctrl + Shift + M`).
     - Configurer la vitesse : **115200 baud**.
-    - Observer les logs de boot, WPS, connexion WiFi et mDNS en temps reel.
+    - Observer les logs de boot, AP Mode, connexion WiFi et mDNS en temps reel.
     - Verifier que le token Bearer et les endpoints sont corrects.
 
-4. **Lancer l'appli**
+5. **Lancer l'appli**
     - Ouvrir l'application **MS-OVH-SMS** sur le telephone Android.
     - Acceder a l'onglet **Power**.
     - Entrer les parametres:
-        - **URL** : `http://POWER_SWITCH.local` (ou l'IP detectee automatiquement)
+        - **URL** : `http://POWER_SWITCH` (ou l'IP detectee automatiquement)
         - **Port** : `80` (par defaut)
         - **PIN** : le numero GPIO configure sur l'ESP32 (ex: `4`)
         - **Token** : le Bearer token du firmware (ex: `6ec3a985e5084bd0889e77c6cd1f81de`)
@@ -216,7 +222,7 @@ Authorization: Bearer 6ec3a985e5084bd0889e77c6cd1f81de
 Exemple :
 
 ```bash
-curl -X POST "http://POWER_SWITCH.local/api/status/4" \
+curl -X POST "http://POWER_SWITCH/api/status/4" \
   -H "Authorization: Bearer 6ec3a985e5084bd0889e77c6cd1f81de"
 ```
 
@@ -239,7 +245,7 @@ Reponse type :
 Exemple :
 
 ```bash
-curl -X POST "http://POWER_SWITCH.local/api/power/4" \
+curl -X POST "http://POWER_SWITCH/api/power/4" \
   -H "Authorization: Bearer 6ec3a985e5084bd0889e77c6cd1f81de"
 ```
 
@@ -263,7 +269,7 @@ Reponse type :
 Exemple :
 
 ```bash
-curl -X POST "http://POWER_SWITCH.local/"
+curl -X POST "http://POWER_SWITCH/"
 ```
 
 ### Codes de retour utiles
@@ -289,312 +295,188 @@ GPIO. Il permet à l'application Android (MS-OVH-SMS) de :
 
 ### Caractéristiques principales
 
-| Caractéristique       | Détail                                                                                 |
-|-----------------------|----------------------------------------------------------------------------------------|
-| **Authentification**  | Bearer Token (header `Authorization: Bearer <TOKEN>`) — 401 si absent/invalide         |
-| **Connexion WiFi**    | WPS PBC (Push Button) — association automatique au démarrage                           |
-| **Découverte Réseau** | mDNS — accessible via `http://POWER_SWITCH.local`                                      |
-| **Endpoints HTTP**    | `POST /api/power/[PIN]` • `POST /api/status/[PIN]` • `POST /` (info)                   |
-| **Sécurité GPIO**     | Whitelist de PINs autorisées (4, 5, 12-19, 21-23, 25-27, 32-33)                        |
+| Caractéristique       | Détail                                                                                |
+|-----------------------|---------------------------------------------------------------------------------------|
+| **Authentification**  | Bearer Token (header `Authorization: Bearer <TOKEN>`) — 401 si absent/invalide        |
+| **Connexion WiFi**    | Portail Captif (AP Mode "ESP32-CONFIG") — Config via 192.168.4.1 |
+| **Stockage Identifiants** | NVS via `Preferences.h` (Persistant après redémarrage) |
+| **Reset Hardware**    | Bouton BOOT (GPIO 0) maintenu 3s pour effacer le WiFi |
+| **Découverte Réseau** | mDNS — accessible via `http://POWER_SWITCH` |
+| **Endpoints HTTP**    | `POST /api/power/[PIN]` • `POST /api/status/[PIN]` • `POST /` (info)                  |
+| **Sécurité GPIO**     | Whitelist de PINs autorisées (16, 17, 23, 26, 27)                       |
 | **Codes HTTP**        | 200 (OK), 400 (format), 401 (auth), 403 (PIN interdite), 404 (endpoint), 405 (méthode) |
-| **Débit Série**       | 115200 baud — logs détaillés [WiFi], [WPS], [AUTH], [POWER], [STATUS]                  |
-| **LED Diagnostic**    | GPIO2 — clignote si erreur WPS, fixe si connecté                                       |
-| **Résilience**        | Reconnexion automatique si perte WiFi • Watchdog intégré                               |
+| **Débit Série**       | 115200 baud — logs détaillés [WiFi], [AP], [STA], [AUTH], [POWER]                     |
+| **LED Status**        | GPIO 23 — clignote lent (AP), fixe (STA), rapide (Reset)                              |
+| **Résilience**        | Reconnexion automatique si perte WiFi • Watchdog intégré                              |
 
 ### Code source complet
 
 ```cpp
 /*
- * ESP32 REST API - GPIO Control via HTTP
- * =======================================
- * Connexion WiFi via WPS au démarrage
- * Auth : Bearer Token (header Authorization: Bearer <TOKEN>)
- * Endpoints :
- *   POST /api/power/[PIN]    → toggle la PIN (OUTPUT)
- *   POST /api/status/[PIN]   → retourne l'état de la PIN
+ * ESP32 REST API - GPIO Control via HTTP (Captive Portal Version)
+ * ==============================================================
+ * Configuration WiFi via Portail Captif (Mode AP "ESP32-CONFIG")
+ * Reset Hardware : Bouton BOOT (GPIO 0) maintenu 3s au démarrage
+ * LED Status (GPIO 23) : Clignotement lent (AP), Fixe (STA)
  *
  * Board : ESP32 Dev Module
- * Arduino core ESP32 : >= 2.x (Espressif)
  */
 
 #include <WiFi.h>
 #include <WebServer.h>
 #include <ESPmDNS.h>
-#include <esp_wps.h>
+#include <DNSServer.h>
+#include <Preferences.h>
 
 // ─── Bearer Token ─────────────────────────────────────────────────────────────
 #define BEARER_TOKEN  "6ec3a985e5084bd0889e77c6cd1f81de"
-
-// ─── Hostname mDNS ────────────────────────────────────────────────────────────
-// Accessible via http://POWER_SWITCH.local
 #define HOSTNAME      "POWER_SWITCH"
 
-// ─── Configuration ────────────────────────────────────────────────────────────
-#define WPS_TIMEOUT_MS   60000
+// ─── Configuration Hardware ───────────────────────────────────────────────────
+#define LED_PIN       23
+#define RESET_PIN     0    // Bouton BOOT
+#define RESET_TIME_MS 3000
 
-// OUTPUT: 16, 17, 26, 27 LED: 23
-const int ALLOWED_PINS[] = {16, 17, 26, 27, 23};
+const int ALLOWED_PINS[] = {16, 17, 23, 26, 27};
 const int ALLOWED_PINS_COUNT = sizeof(ALLOWED_PINS) / sizeof(ALLOWED_PINS[0]);
 
-// ─── Globals ──────────────────────────────────────────────────────────────────
+// ─── Globales ─────────────────────────────────────────────────────────────────
 WebServer server(80);
-static volatile bool wpsSuccess  = false;
-static volatile bool wpsFinished = false;
-
-// ─── WPS ──────────────────────────────────────────────────────────────────────
-static esp_wps_config_t wpsConfig;
-
-void wpsInitConfig() {
-  memset(&wpsConfig, 0, sizeof(wpsConfig));
-  wpsConfig.wps_type = WPS_TYPE_PBC;
-  strcpy(wpsConfig.factory_info.manufacturer, "ESP32");
-  strcpy(wpsConfig.factory_info.model_number, "ESP32");
-  strcpy(wpsConfig.factory_info.model_name,   "Espressif");
-  strcpy(wpsConfig.factory_info.device_name,  HOSTNAME);
-}
-
-void WiFiEvent(WiFiEvent_t event, arduino_event_info_t info) {
-  switch (event) {
-    case ARDUINO_EVENT_WIFI_STA_START:
-      Serial.println("[WiFi] Station démarrée");
-      break;
-    case ARDUINO_EVENT_WPS_ER_SUCCESS:
-      Serial.println("[WPS] Succès — connexion en cours...");
-      esp_wifi_wps_disable();
-      delay(10);
-      WiFi.begin();
-      break;
-    case ARDUINO_EVENT_WPS_ER_FAILED:
-      Serial.println("[WPS] Échec");
-      esp_wifi_wps_disable();
-      wpsFinished = true; wpsSuccess = false;
-      break;
-    case ARDUINO_EVENT_WPS_ER_TIMEOUT:
-      Serial.println("[WPS] Timeout");
-      esp_wifi_wps_disable();
-      wpsFinished = true; wpsSuccess = false;
-      break;
-    case ARDUINO_EVENT_WIFI_STA_GOT_IP:
-      Serial.print("[WiFi] IP obtenue : ");
-      Serial.println(WiFi.localIP());
-      wpsFinished = true; wpsSuccess = true;
-      break;
-    case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:
-      Serial.println("[WiFi] Déconnecté");
-      break;
-    default:
-      break;
-  }
-}
-
-bool connectWPS() {
-  Serial.println("\n[WPS] Démarrage WPS PBC...");
-  Serial.println("[WPS] Appuyez sur le bouton WPS de votre routeur !");
-  WiFi.onEvent(WiFiEvent);
-  WiFi.setHostname(HOSTNAME);   // doit être avant WiFi.mode()
-  WiFi.mode(WIFI_STA);
-  wpsInitConfig();
-  esp_wifi_wps_enable(&wpsConfig);
-  esp_wifi_wps_start(0);
-  unsigned long start = millis();
-  while (!wpsFinished) {
-    if (millis() - start > WPS_TIMEOUT_MS) {
-      Serial.println("\n[WPS] Timeout global atteint");
-      esp_wifi_wps_disable();
-      return false;
-    }
-    delay(100);
-    Serial.print(".");
-  }
-  Serial.println();
-  return wpsSuccess;
-}
+DNSServer dnsServer;
+Preferences preferences;
+String ssid, password;
+bool isAPMode = false;
 
 // ─── Auth Bearer ──────────────────────────────────────────────────────────────
 bool checkBearer() {
-  if (!server.hasHeader("Authorization")) return false;
-  String authHeader = server.header("Authorization");
-  String expected   = "Bearer " + String(BEARER_TOKEN);
-  return authHeader.equals(expected);
+    if (!server.hasHeader("Authorization")) return false;
+    String authHeader = server.header("Authorization");
+    return authHeader.equals("Bearer " + String(BEARER_TOKEN));
 }
 
-// ─── Helpers REST ─────────────────────────────────────────────────────────────
-bool isPinAllowed(int pin) {
-  for (int i = 0; i < ALLOWED_PINS_COUNT; i++) {
-    if (ALLOWED_PINS[i] == pin) return true;
-  }
-  return false;
-}
-
+// ─── Handlers REST ────────────────────────────────────────────────────────────
 void sendJSON(int code, String json) {
-  server.sendHeader("Access-Control-Allow-Origin", "*");
-  server.send(code, "application/json", json);
+    server.sendHeader("Access-Control-Allow-Origin", "*");
+    server.send(code, "application/json", json);
 }
 
 int parsePinFromURI(String uri) {
-  int lastSlash = uri.lastIndexOf('/');
-  if (lastSlash == -1) return -1;
-  String pinStr = uri.substring(lastSlash + 1);
-  if (pinStr.length() == 0) return -1;
-  for (char c : pinStr) {
-    if (!isDigit(c)) return -1;
-  }
-  return pinStr.toInt();
+    int lastSlash = uri.lastIndexOf('/');
+    if (lastSlash == -1) return -1;
+    String pinStr = uri.substring(lastSlash + 1);
+    for (char c : pinStr) if (!isDigit(c)) return -1;
+    return pinStr.toInt();
 }
 
-// ─── Handlers ─────────────────────────────────────────────────────────────────
-
-// POST /api/power/[PIN] → toggle OUTPUT
 void handlePower() {
-  if (!checkBearer()) {
-    sendJSON(401, "{\"error\":\"Unauthorized — Bearer token invalide ou manquant\"}");
-    Serial.println("[AUTH]    Refus — token invalide");
-    return;
-  }
-  int pin = parsePinFromURI(server.uri());
-  if (pin == -1) {
-    sendJSON(400, "{\"error\":\"Format : /api/power/[PIN]\"}");
-    return;
-  }
-  if (!isPinAllowed(pin)) {
-    sendJSON(403, "{\"error\":\"PIN non autorisee\"}");
-    return;
-  }
-  pinMode(pin, OUTPUT);
-  int newState = (digitalRead(pin) == HIGH) ? LOW : HIGH;
-  digitalWrite(pin, newState);
-  String stateStr = (newState == HIGH) ? "HIGH" : "LOW";
-  sendJSON(200,
-    "{\"pin\":"    + String(pin) +
-    ",\"state\":\"" + stateStr + "\"" +
-    ",\"value\":"  + String(newState) +
-    ",\"action\":\"toggled\"}"
-  );
-  Serial.printf("[POWER]   PIN %d -> %s\n", pin, stateStr.c_str());
+    if (!checkBearer()) { sendJSON(401, "{\"error\":\"Unauthorized\"}"); return; }
+    int pin = parsePinFromURI(server.uri());
+    bool allowed = false;
+    for (int i=0; i<ALLOWED_PINS_COUNT; i++) if (ALLOWED_PINS[i] == pin) allowed = true;
+    if (!allowed) { sendJSON(403, "{\"error\":\"Forbidden PIN\"}"); return; }
+    
+    pinMode(pin, OUTPUT);
+    digitalWrite(pin, !digitalRead(pin));
+    int val = digitalRead(pin);
+    sendJSON(200, "{\"pin\":" + String(pin) + ",\"state\":\"" + (val?"HIGH":"LOW") + "\",\"value\":" + String(val) + ",\"action\":\"toggled\"}");
 }
 
-// POST /api/status/[PIN] → lecture état
 void handleStatus() {
-  if (!checkBearer()) {
-    sendJSON(401, "{\"error\":\"Unauthorized — Bearer token invalide ou manquant\"}");
-    Serial.println("[AUTH]    Refus — token invalide");
-    return;
-  }
-  int pin = parsePinFromURI(server.uri());
-  if (pin == -1) {
-    sendJSON(400, "{\"error\":\"Format : /api/status/[PIN]\"}");
-    return;
-  }
-  if (!isPinAllowed(pin)) {
-    sendJSON(403, "{\"error\":\"PIN non autorisee\"}");
-    return;
-  }
-  int val = digitalRead(pin);
-  String stateStr = (val == HIGH) ? "HIGH" : "LOW";
-  sendJSON(200,
-    "{\"pin\":"    + String(pin) +
-    ",\"state\":\"" + stateStr + "\"" +
-    ",\"value\":"  + String(val) + "}"
-  );
-  Serial.printf("[STATUS]  PIN %d = %s\n", pin, stateStr.c_str());
+    if (!checkBearer()) { sendJSON(401, "{\"error\":\"Unauthorized\"}"); return; }
+    int pin = parsePinFromURI(server.uri());
+    bool allowed = false;
+    for (int i=0; i<ALLOWED_PINS_COUNT; i++) if (ALLOWED_PINS[i] == pin) allowed = true;
+    if (!allowed) { sendJSON(403, "{\"error\":\"Forbidden PIN\"}"); return; }
+    
+    int val = digitalRead(pin);
+    sendJSON(200, "{\"pin\":" + String(pin) + ",\"state\":\"" + (val?"HIGH":"LOW") + "\",\"value\":" + String(val) + "}");
 }
 
-// POST / → info (non protégé)
-void handleRoot() {
-  sendJSON(200,
-    "{\"device\":\"" + String(HOSTNAME) + "\""
-    ",\"ip\":\""     + WiFi.localIP().toString() + "\""
-    ",\"host\":\""   + String(HOSTNAME) + ".local\""
-    ",\"auth\":\"Bearer token requis\""
-    ",\"endpoints\":[\"/api/power/[PIN]\",\"/api/status/[PIN]\"]}"
-  );
+// ─── Portail Captif ───────────────────────────────────────────────────────────
+void handleCaptivePortal() {
+    if (server.hasArg("ssid") && server.hasArg("pass")) {
+        preferences.begin("wifi", false);
+        preferences.putString("ssid", server.arg("ssid"));
+        preferences.putString("pass", server.arg("pass"));
+        preferences.end();
+        server.send(200, "text/html", "<html><body><h1>Config OK</h1><p>Redemarrage...</p></body></html>");
+        delay(2000);
+        ESP.restart();
+    }
+    String html = "<html><head><meta name='viewport' content='width=device-width, initial-scale=1.0'></head><body>"
+                  "<h2>ESP32 WiFi Config</h2><form method='POST'>"
+                  "SSID: <input name='ssid'><br>PASS: <input name='pass' type='password'><br>"
+                  "<input type='submit' value='Enregistrer'></form></body></html>";
+    server.send(200, "text/html", html);
 }
 
 // ─── Setup ────────────────────────────────────────────────────────────────────
 void setup() {
-  Serial.begin(115200);
-  delay(500);
+    Serial.begin(115200);
+    pinMode(LED_PIN, OUTPUT);
+    pinMode(RESET_PIN, INPUT_PULLUP);
 
-  // ── Bannière Monitor ────────────────────────────────────────────────────────
-  Serial.println();
-  Serial.println("╔══════════════════════════════════════════════════════════════╗");
-  Serial.println("║               POWER_SWITCH  REST  API                       ║");
-  Serial.println("╠══════════════════════════════════════════════════════════════╣");
-  Serial.println("║  Auth : Bearer Token                                         ║");
-  Serial.println("╠══════════════════════════════════════════════════════════════╣");
-  Serial.printf( "║  TOKEN  : %-51s ║\n", BEARER_TOKEN);
-  Serial.println("╠══════════════════════════════════════════════════════════════╣");
-  Serial.println("║  Header : Authorization: Bearer <TOKEN>                      ║");
-  Serial.println("╚══════════════════════════════════════════════════════════════╝");
-  Serial.println();
-
-  pinMode(2, OUTPUT);
-  digitalWrite(2, LOW);
-
-  if (!connectWPS()) {
-    Serial.println("[ERREUR] WPS echoue — redemarrez et reessayez.");
-    while (true) {
-      digitalWrite(2, HIGH); delay(150);
-      digitalWrite(2, LOW);  delay(150);
+    // Check Reset Hardware
+    if (digitalRead(RESET_PIN) == LOW) {
+        unsigned long start = millis();
+        while (digitalRead(RESET_PIN) == LOW && (millis() - start < RESET_TIME_MS)) {
+            digitalWrite(LED_PIN, (millis()/100)%2); // Fast blink
+        }
+        if (millis() - start >= RESET_TIME_MS) {
+            preferences.begin("wifi", false);
+            preferences.clear();
+            preferences.end();
+            Serial.println("[RESET] WiFi Cleared");
+            for(int i=0; i<10; i++) { digitalWrite(LED_PIN, !digitalRead(LED_PIN)); delay(50); }
+        }
     }
-  }
 
-  digitalWrite(2, HIGH);  // LED fixe = connecté
+    preferences.begin("wifi", true);
+    ssid = preferences.getString("ssid", "");
+    password = preferences.getString("pass", "");
+    preferences.end();
 
-  // mDNS → http://POWER_SWITCH.local
-  if (MDNS.begin(HOSTNAME)) {
-    MDNS.addService("http", "tcp", 80);
-    Serial.printf("[mDNS]  http://%s.local\n", HOSTNAME);
-  } else {
-    Serial.println("[mDNS]  Echec démarrage mDNS");
-  }
-
-  // Headers à collecter (obligatoire sur ESP32 WebServer)
-  const char* headerKeys[] = {"Authorization"};
-  server.collectHeaders(headerKeys, 1);
-
-  server.on("/", HTTP_POST, handleRoot);
-  server.onNotFound([]() {
-    String uri = server.uri();
-    if (server.method() != HTTP_POST) {
-      sendJSON(405, "{\"error\":\"Methode non autorisee — utilisez POST\"}");
-      return;
+    if (ssid == "") {
+        isAPMode = true;
+        WiFi.softAP("ESP32-CONFIG");
+        dnsServer.start(53, "*", WiFi.softAPIP());
+        server.on("/", HTTP_GET, handleCaptivePortal);
+        server.on("/", HTTP_POST, handleCaptivePortal);
+        server.onNotFound(handleCaptivePortal);
+        Serial.println("[AP] Mode Config : ESP32-CONFIG / 192.168.4.1");
+    } else {
+        WiFi.begin(ssid.c_str(), password.c_str());
+        Serial.print("[STA] Connection a " + ssid);
+        int retry = 0;
+        while (WiFi.status() != WL_CONNECTED && retry < 20) {
+            digitalWrite(LED_PIN, !digitalRead(LED_PIN));
+            delay(500); Serial.print("."); retry++;
+        }
+        if (WiFi.status() == WL_CONNECTED) {
+            digitalWrite(LED_PIN, HIGH);
+            MDNS.begin(HOSTNAME);
+            const char* headerKeys[] = {"Authorization"};
+            server.collectHeaders(headerKeys, 1);
+            server.on("/", HTTP_POST, [](){ sendJSON(200, "{\"device\":\""+String(HOSTNAME)+"\"}"); });
+            server.onNotFound([]() {
+                if (server.uri().startsWith("/api/power/")) handlePower();
+                else if (server.uri().startsWith("/api/status/")) handleStatus();
+                else sendJSON(404, "{\"error\":\"Not Found\"}");
+            });
+            Serial.println("\n[OK] IP: " + WiFi.localIP().toString());
+        } else {
+            ESP.restart(); // Retry
+        }
     }
-    if      (uri.startsWith("/api/power/"))  handlePower();
-    else if (uri.startsWith("/api/status/")) handleStatus();
-    else sendJSON(404, "{\"error\":\"Endpoint non trouve\"}");
-  });
-
-  server.begin();
-
-  // ── Résumé après connexion ──────────────────────────────────────────────────
-  Serial.println();
-  Serial.println("╔════════════════════════════════════════════════════════════════════════════╗");
-  Serial.println("║                          SERVEUR DÉMARRÉ                                   ║");
-  Serial.println("╠════════════════════════════════════════════════════════════════════════════╣");
-  Serial.printf( "║  Device   : %-62s ║\n", HOSTNAME);
-  Serial.printf( "║  IP       : %-62s ║\n", WiFi.localIP().toString().c_str());
-  Serial.printf( "║  mDNS     : %-62s ║\n", (String(HOSTNAME) + ".local").c_str());
-  Serial.println("╠════════════════════════════════════════════════════════════════════════════╣");
-  Serial.println("║  ENDPOINTS (POST)                                                          ║");
-  Serial.println("║  /api/power/[PIN]                                                          ║");
-  Serial.println("║  /api/status/[PIN]                                                         ║");
-  Serial.println("╠════════════════════════════════════════════════════════════════════════════╣");
-  Serial.println("║  EXEMPLE curl :                                                            ║");
-  Serial.printf( "║  curl -X POST -H \"Authorization: Bearer %s\" \\ ║\n", BEARER_TOKEN);
-  Serial.printf( "║    http://%s.local/api/power/4               ║\n", HOSTNAME);
-  Serial.println("╚════════════════════════════════════════════════════════════════════════════╝");
-  Serial.println();
+    server.begin();
 }
 
-// ─── Loop ─────────────────────────────────────────────────────────────────────
 void loop() {
-  server.handleClient();
-  if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("[WiFi] Connexion perdue, reconnexion...");
-    WiFi.reconnect();
-    delay(5000);
-  }
+    if (isAPMode) {
+        dnsServer.processNextRequest();
+        digitalWrite(LED_PIN, (millis()/1000)%2); // Slow blink
+    }
+    server.handleClient();
 }
 ```
 
